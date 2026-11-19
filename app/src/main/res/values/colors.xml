@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="royal_gold">#FFEABF16</color>
+    <color name="burgundy">#FF8D2029</color>
+    <color name="forest_green">#FF087A45</color>
+    <color name="warm_ivory">#FFFFF9E8</color>
+    <color name="splash_royal_blue">#FF011356</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

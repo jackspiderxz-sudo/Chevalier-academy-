@@ -1,0 +1,6 @@
+{
+  "name": "Chevalier Academy",
+  "description": "Official Trial Demo App for Chevalier Academy Matric Higher Secondary School, Dindigul.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
