@@ -1,6 +1,8 @@
 package com.example.ui.screens.management
 
 import android.Manifest
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -87,11 +89,15 @@ fun VersionHistoryScreen(managementViewModel: ManagementViewModel, mStrings: Man
         val canEdit = sec != null && managementViewModel.hasPermission(sec, PermissionAction.EDIT)
         val canPublish = sec != null && managementViewModel.hasPermission(sec, PermissionAction.PUBLISH)
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 inspectingVersion = null
             },
-            title = { Text(mStrings.versionHeader(v.versionNumber, v.recordTitle)) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.versionHeader(v.versionNumber, v.recordTitle))
+            },
             text = {
                 Column(modifier = Modifier.height(320.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     vmError?.let {
@@ -297,8 +303,12 @@ fun NotificationsScreen(managementViewModel: ManagementViewModel, mStrings: Mana
 
     if (showClearAllConfirm) {
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = { showClearAllConfirm = false },
-            title = { Text(mStrings.clearNotificationsTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.clearNotificationsTitle)
+            },
             text = { Text(mStrings.clearNotificationsMsg) },
             confirmButton = {
                 Button(
@@ -539,11 +549,15 @@ fun BackupRestoreScreen(managementViewModel: ManagementViewModel, mStrings: Mana
     backupPreview?.let { preview ->
         val uri = selectedRestoreUri
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 managementViewModel.clearBackupPreview()
             },
-            title = { Text(mStrings.backupPreviewTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.backupPreviewTitle)
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     vmError?.let {
@@ -743,8 +757,13 @@ fun BackupRestoreScreen(managementViewModel: ManagementViewModel, mStrings: Mana
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold)
                             )
                         }
+                        val authModeLabel = if (status.remoteAuth.key == "auth_mode") {
+                            mStrings.backendStatusAuthModeLabel
+                        } else {
+                            status.remoteAuth.label
+                        }
                         Text(
-                            text = "${status.remoteAuth.label}: ${
+                            text = "$authModeLabel: ${
                                 if (status.remoteAuth.state == IntegrationState.ACTIVE_LOCAL) mStrings.backendStatusLocalActiveLabel else mStrings.backendStatusUnconfiguredLabel
                             }",
                             style = MaterialTheme.typography.bodySmall,
@@ -752,7 +771,12 @@ fun BackupRestoreScreen(managementViewModel: ManagementViewModel, mStrings: Mana
                         )
                         Text(text = mStrings.backendStatusAutoBackupLabel, style = MaterialTheme.typography.bodySmall)
                         Text(text = mStrings.backendStatusRemoteSyncLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(text = "Tenant ID: ${status.tenantId}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = mStrings.backendStatusTenantId(status.tenantId),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.testTag("backend_status_tenant_id")
+                        )
                     }
                 }
             }

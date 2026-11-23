@@ -60,6 +60,8 @@ import coil.request.ImageRequest
 import com.example.ChevalierApplication
 import com.example.core.i18n.ManagementStrings
 import com.example.data.local.entity.MediaStudioItemEntity
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureFullScreenDialogProperties
 import com.example.ui.theme.LocalBrandPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -201,8 +203,9 @@ fun UniversalMediaStudioPickerDialog(
 
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = SecureFullScreenDialogProperties
     ) {
+        ApplySecureDialogWindow()
         Surface(
             modifier = Modifier
                 .safeDrawingPadding()

@@ -39,7 +39,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -188,6 +191,13 @@ fun LanguageSelectionScreen(
 ) {
     val strings = LocalAppStrings.current
     val brand = LocalBrandPalette.current
+    var pendingSelection by remember { mutableStateOf<AppLanguage?>(null) }
+    LaunchedEffect(selectedLanguage) {
+        if (pendingSelection == selectedLanguage) {
+            pendingSelection = null
+        }
+    }
+    val effectiveSelectedLanguage = pendingSelection ?: selectedLanguage
 
     Surface(
         modifier = Modifier
@@ -282,11 +292,14 @@ fun LanguageSelectionScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         AppLanguage.entries.forEach { language ->
-                            val isSelected = language == selectedLanguage
+                            val isSelected = language == effectiveSelectedLanguage
                             LanguageOptionCard(
                                 language = language,
                                 selected = isSelected,
-                                onClick = { onLanguagePreviewSelected(language) }
+                                onClick = {
+                                    pendingSelection = language
+                                    onLanguagePreviewSelected(language)
+                                }
                             )
                         }
                     }
@@ -299,7 +312,7 @@ fun LanguageSelectionScreen(
                         .padding(top = 28.dp)
                 ) {
                     Button(
-                        onClick = { onConfirmLanguage(selectedLanguage) },
+                        onClick = { onConfirmLanguage(effectiveSelectedLanguage) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(54.dp)

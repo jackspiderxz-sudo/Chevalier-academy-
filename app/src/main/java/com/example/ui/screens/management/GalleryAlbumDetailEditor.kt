@@ -90,6 +90,9 @@ import com.example.data.media.CropAspectRatioPreset
 import com.example.data.media.MediaStudioManager
 import com.example.data.repository.ContentSnapshotSerializer
 import com.example.data.repository.PublishSaveMode
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
+import com.example.ui.components.SecureFullScreenDialogProperties
 import com.example.ui.components.GalleryMediaTileContent
 import com.example.ui.components.PhotoLightboxDialog
 import com.example.ui.theme.LocalBrandPalette
@@ -436,7 +439,10 @@ fun GalleryAlbumDetailEditor(
         val candidateLabel = candidate.title ?: mStrings.galleryMediaDefaultTitle
         AlertDialog(
             onDismissRequest = { deleteCandidate = null },
-            title = { Text(mStrings.deleteRecordTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.deleteRecordTitle)
+            },
             text = { Text(mStrings.deleteRecordMsg(candidateLabel)) },
             confirmButton = {
                 Button(
@@ -463,14 +469,16 @@ fun GalleryAlbumDetailEditor(
                     Text(mStrings.cancelBtn)
                 }
             },
-            modifier = Modifier.testTag("gallery_delete_confirm_dialog")
+            modifier = Modifier.testTag("gallery_delete_confirm_dialog"),
+            properties = SecureDialogProperties
         )
     }
 
     Dialog(
         onDismissRequest = onBack,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = SecureFullScreenDialogProperties
     ) {
+        ApplySecureDialogWindow()
         BackHandler { onBack() }
 
         Surface(

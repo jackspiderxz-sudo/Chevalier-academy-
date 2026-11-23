@@ -30,6 +30,7 @@ export const SHARED_ANDROID_ASSETS = [
 export const WEB_JS_FILES = [
   'icons.js',
   'i18n.js',
+  'mediaUtils.js',
   'store.js',
   'publicViews.js',
   'adminViews.js',

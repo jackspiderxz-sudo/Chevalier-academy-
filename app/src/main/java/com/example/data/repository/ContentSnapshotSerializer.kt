@@ -9,8 +9,14 @@ import com.example.data.local.entity.GalleryAlbumEntity
 import com.example.data.local.entity.GalleryMediaEntity
 import com.example.data.local.entity.HigherSecondaryCourseEntity
 import com.example.data.local.entity.NewsItemEntity
+import com.example.data.local.entity.SchoolHighlightEntity
+import com.example.data.local.entity.SchoolPostCategory
+import com.example.data.local.entity.SchoolPostEntity
+import com.example.data.local.entity.SchoolPostStatus
+import com.example.data.local.entity.SchoolPostType
 import com.example.data.local.entity.SchoolProfileEntity
 import com.example.data.local.entity.SocialMediaLinkEntity
+import com.example.data.local.entity.SyncMetadataDefaults
 import com.example.data.local.entity.TransportRouteEntity
 import org.json.JSONObject
 
@@ -39,12 +45,21 @@ object ContentSnapshotSerializer {
         put("updatedAtMillis", p.updatedAtMillis)
         putOpt("profileImageUri", p.profileImageUri)
         putOpt("aboutImageUri", p.aboutImageUri)
+        putSyncMetadata(
+            remoteId = p.remoteId,
+            tenantId = p.tenantId,
+            syncState = p.syncState,
+            serverUpdatedAtMillis = p.serverUpdatedAtMillis,
+            includeSoftDelete = false
+        )
     }.toString()
 
     fun schoolProfileFromJson(jsonStr: String): SchoolProfileEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optInt("id", 1)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return SchoolProfileEntity(
-            id = o.optInt("id", 1),
+            id = id,
             schoolName = o.getString("schoolName"),
             shortName = o.getString("shortName"),
             motto = o.getString("motto"),
@@ -65,7 +80,16 @@ object ContentSnapshotSerializer {
             affiliationNumber = o.optNullableString("affiliationNumber"),
             updatedAtMillis = o.optLong("updatedAtMillis", System.currentTimeMillis()),
             profileImageUri = o.optNullableString("profileImageUri"),
-            aboutImageUri = o.optNullableString("aboutImageUri")
+            aboutImageUri = o.optNullableString("aboutImageUri"),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(
+                candidate = o.optNullableString("remoteId"),
+                tableName = "school_profile",
+                localId = id.toLong(),
+                tenantId = tenantId
+            ),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis")
         )
     }
 
@@ -80,12 +104,15 @@ object ContentSnapshotSerializer {
         put("isApproved", a.isApproved)
         put("approvalStatus", a.approvalStatus)
         put("updatedAtMillis", a.updatedAtMillis)
+        putSyncMetadata(a.remoteId, a.tenantId, a.syncState, a.serverUpdatedAtMillis, a.deletedAtMillis)
     }.toString()
 
     fun academicInfoFromJson(jsonStr: String, publishNow: Boolean): AcademicInfoEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return AcademicInfoEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             title = o.getString("title"),
             category = o.getString("category"),
             description = o.getString("description"),
@@ -94,7 +121,12 @@ object ContentSnapshotSerializer {
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
-            updatedAtMillis = System.currentTimeMillis()
+            updatedAtMillis = System.currentTimeMillis(),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "academic_info", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -111,12 +143,15 @@ object ContentSnapshotSerializer {
         put("isPublished", c.isPublished)
         put("isApproved", c.isApproved)
         put("approvalStatus", c.approvalStatus)
+        putSyncMetadata(c.remoteId, c.tenantId, c.syncState, c.serverUpdatedAtMillis, c.deletedAtMillis)
     }.toString()
 
     fun courseFromJson(jsonStr: String, publishNow: Boolean): HigherSecondaryCourseEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return HigherSecondaryCourseEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             streamTitle = o.getString("streamTitle"),
             groupCode = o.getString("groupCode"),
             subjectsSummary = o.getString("subjectsSummary"),
@@ -127,7 +162,12 @@ object ContentSnapshotSerializer {
             isVerified = publishNow || o.optBoolean("isVerified", false),
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
-            approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING)
+            approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "higher_secondary_courses", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -143,12 +183,15 @@ object ContentSnapshotSerializer {
         put("isApproved", f.isApproved)
         put("approvalStatus", f.approvalStatus)
         putOpt("imageUri", f.imageUri)
+        putSyncMetadata(f.remoteId, f.tenantId, f.syncState, f.serverUpdatedAtMillis, f.deletedAtMillis)
     }.toString()
 
     fun facilityFromJson(jsonStr: String, publishNow: Boolean): FacilityEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return FacilityEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             name = o.getString("name"),
             category = o.getString("category"),
             description = o.getString("description"),
@@ -158,7 +201,12 @@ object ContentSnapshotSerializer {
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
-            imageUri = o.optNullableString("imageUri")
+            imageUri = o.optNullableString("imageUri"),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "facilities", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -175,12 +223,15 @@ object ContentSnapshotSerializer {
         put("isApproved", t.isApproved)
         put("approvalStatus", t.approvalStatus)
         put("displayOrder", t.displayOrder)
+        putSyncMetadata(t.remoteId, t.tenantId, t.syncState, t.serverUpdatedAtMillis, t.deletedAtMillis)
     }.toString()
 
     fun transportFromJson(jsonStr: String, publishNow: Boolean): TransportRouteEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return TransportRouteEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             routeNumber = o.getString("routeNumber"),
             routeName = o.getString("routeName"),
             stopsSummary = o.getString("stopsSummary"),
@@ -191,7 +242,12 @@ object ContentSnapshotSerializer {
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
-            displayOrder = o.optInt("displayOrder", 0)
+            displayOrder = o.optInt("displayOrder", 0),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "transport_routes", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -209,12 +265,15 @@ object ContentSnapshotSerializer {
         put("approvalStatus", n.approvalStatus)
         putOpt("imageUri", n.imageUri)
         put("displayOrder", n.displayOrder)
+        putSyncMetadata(n.remoteId, n.tenantId, n.syncState, n.serverUpdatedAtMillis, n.deletedAtMillis)
     }.toString()
 
     fun newsFromJson(jsonStr: String, publishNow: Boolean): NewsItemEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return NewsItemEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             title = o.getString("title"),
             summary = o.getString("summary"),
             fullBody = o.getString("fullBody"),
@@ -226,7 +285,12 @@ object ContentSnapshotSerializer {
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
             imageUri = o.optNullableString("imageUri"),
-            displayOrder = o.optInt("displayOrder", 0)
+            displayOrder = o.optInt("displayOrder", 0),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "news_items", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -243,12 +307,15 @@ object ContentSnapshotSerializer {
         put("approvalStatus", a.approvalStatus)
         putOpt("imageUri", a.imageUri)
         put("displayOrder", a.displayOrder)
+        putSyncMetadata(a.remoteId, a.tenantId, a.syncState, a.serverUpdatedAtMillis, a.deletedAtMillis)
     }.toString()
 
     fun announcementFromJson(jsonStr: String, publishNow: Boolean): AnnouncementEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return AnnouncementEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             title = o.getString("title"),
             message = o.getString("message"),
             priorityLabel = o.optNullableString("priorityLabel"),
@@ -259,7 +326,12 @@ object ContentSnapshotSerializer {
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
             imageUri = o.optNullableString("imageUri"),
-            displayOrder = o.optInt("displayOrder", 0)
+            displayOrder = o.optInt("displayOrder", 0),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "announcements", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -273,12 +345,15 @@ object ContentSnapshotSerializer {
         put("isPublished", s.isPublished)
         put("isApproved", s.isApproved)
         put("approvalStatus", s.approvalStatus)
+        putSyncMetadata(s.remoteId, s.tenantId, s.syncState, s.serverUpdatedAtMillis, s.deletedAtMillis)
     }.toString()
 
     fun socialFromJson(jsonStr: String, publishNow: Boolean): SocialMediaLinkEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return SocialMediaLinkEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             platformName = o.getString("platformName"),
             handleOrLabel = o.getString("handleOrLabel"),
             url = o.getString("url"),
@@ -286,7 +361,12 @@ object ContentSnapshotSerializer {
             isVerified = publishNow || o.optBoolean("isVerified", false),
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
-            approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING)
+            approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "social_media_links", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -300,12 +380,15 @@ object ContentSnapshotSerializer {
         put("isApproved", h.isApproved)
         put("approvalStatus", h.approvalStatus)
         put("addedAtMillis", h.addedAtMillis)
+        putSyncMetadata(h.remoteId, h.tenantId, h.syncState, h.serverUpdatedAtMillis, h.deletedAtMillis)
     }.toString()
 
     fun heroPhotoFromJson(jsonStr: String, publishNow: Boolean): CampusHeroPhotoEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return CampusHeroPhotoEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             imageUri = o.getString("imageUri"),
             caption = o.optNullableString("caption"),
             displayOrder = o.optInt("displayOrder", 0),
@@ -313,7 +396,12 @@ object ContentSnapshotSerializer {
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
-            addedAtMillis = o.optLong("addedAtMillis", System.currentTimeMillis())
+            addedAtMillis = o.optLong("addedAtMillis", System.currentTimeMillis()),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "campus_hero_photos", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -330,12 +418,15 @@ object ContentSnapshotSerializer {
         put("isApproved", a.isApproved)
         put("approvalStatus", a.approvalStatus)
         put("displayOrder", a.displayOrder)
+        putSyncMetadata(a.remoteId, a.tenantId, a.syncState, a.serverUpdatedAtMillis, a.deletedAtMillis)
     }.toString()
 
     fun galleryAlbumFromJson(jsonStr: String, publishNow: Boolean): GalleryAlbumEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return GalleryAlbumEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             title = o.getString("title"),
             category = o.optString("category", "Campus"),
             description = o.optNullableString("description"),
@@ -346,7 +437,12 @@ object ContentSnapshotSerializer {
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
-            displayOrder = o.optInt("displayOrder", 0)
+            displayOrder = o.optInt("displayOrder", 0),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "gallery_albums", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
     }
 
@@ -363,12 +459,15 @@ object ContentSnapshotSerializer {
         put("isApproved", m.isApproved)
         put("approvalStatus", m.approvalStatus)
         put("addedAtMillis", m.addedAtMillis)
+        putSyncMetadata(m.remoteId, m.tenantId, m.syncState, m.serverUpdatedAtMillis, m.deletedAtMillis)
     }.toString()
 
     fun galleryMediaFromJson(jsonStr: String, publishNow: Boolean): GalleryMediaEntity {
         val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
         return GalleryMediaEntity(
-            id = o.optLong("id", 0L),
+            id = id,
             albumId = o.getLong("albumId"),
             title = o.optNullableString("title"),
             caption = o.optNullableString("caption"),
@@ -379,8 +478,145 @@ object ContentSnapshotSerializer {
             isPublished = publishNow || o.optBoolean("isPublished", false),
             isApproved = publishNow || o.optBoolean("isApproved", false),
             approvalStatus = if (publishNow) ApprovalStatus.APPROVED else o.optString("approvalStatus", ApprovalStatus.PENDING),
-            addedAtMillis = o.optLong("addedAtMillis", System.currentTimeMillis())
+            addedAtMillis = o.optLong("addedAtMillis", System.currentTimeMillis()),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "gallery_media", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
         )
+    }
+
+    fun schoolPostToJson(p: SchoolPostEntity): String = JSONObject().apply {
+        put("id", p.id)
+        put("postType", p.postType)
+        put("category", p.category)
+        put("title", p.title)
+        put("description", p.description)
+        putOpt("youtubeUrl", p.youtubeUrl)
+        putOpt("customThumbnailUri", p.customThumbnailUri)
+        put("photoUrisJson", p.photoUrisJson)
+        put("status", p.status)
+        put("isFeatured", p.isFeatured)
+        put("createdAtMillis", p.createdAtMillis)
+        if (p.publishedAtMillis != null) put("publishedAtMillis", p.publishedAtMillis) else put("publishedAtMillis", JSONObject.NULL)
+        put("updatedAtMillis", p.updatedAtMillis)
+        putSyncMetadata(p.remoteId, p.tenantId, p.syncState, p.serverUpdatedAtMillis, p.deletedAtMillis)
+    }.toString()
+
+    fun schoolPostFromJson(
+        jsonStr: String,
+        publishNow: Boolean,
+        forcedStatus: String? = null
+    ): SchoolPostEntity {
+        val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        val now = System.currentTimeMillis()
+        val existingPub = if (o.has("publishedAtMillis") && !o.isNull("publishedAtMillis")) {
+            o.optLong("publishedAtMillis", 0L).takeIf { it > 0L }
+        } else null
+        val resolvedStatus = when {
+            publishNow -> SchoolPostStatus.PUBLISHED
+            forcedStatus == SchoolPostStatus.ARCHIVED -> SchoolPostStatus.ARCHIVED
+            forcedStatus == SchoolPostStatus.UNPUBLISHED -> SchoolPostStatus.UNPUBLISHED
+            else -> SchoolPostStatus.UNPUBLISHED
+        }
+        return SchoolPostEntity(
+            id = id,
+            postType = o.optString("postType", SchoolPostType.PHOTO),
+            category = o.optString("category", SchoolPostCategory.GENERAL).ifBlank { SchoolPostCategory.GENERAL },
+            title = o.optString("title", ""),
+            description = o.optString("description", ""),
+            youtubeUrl = o.optNullableString("youtubeUrl"),
+            customThumbnailUri = o.optNullableString("customThumbnailUri"),
+            photoUrisJson = o.optString("photoUrisJson", "[]").ifBlank { "[]" },
+            status = resolvedStatus,
+            isFeatured = o.optBoolean("isFeatured", false),
+            createdAtMillis = o.optLong("createdAtMillis", now).takeIf { it > 0L } ?: now,
+            publishedAtMillis = if (resolvedStatus == SchoolPostStatus.PUBLISHED) (existingPub ?: now) else existingPub,
+            updatedAtMillis = now,
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "school_posts", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
+        )
+    }
+
+    fun schoolHighlightToJson(h: SchoolHighlightEntity): String = JSONObject().apply {
+        put("id", h.id)
+        put("title", h.title)
+        put("youtubeShortsUrl", h.youtubeShortsUrl)
+        put("status", h.status)
+        put("createdAtMillis", h.createdAtMillis)
+        put("publishedAtMillis", h.publishedAtMillis)
+        put("expiresAtMillis", h.expiresAtMillis)
+        putSyncMetadata(h.remoteId, h.tenantId, h.syncState, h.serverUpdatedAtMillis, h.deletedAtMillis)
+    }.toString()
+
+    fun schoolHighlightFromJson(
+        jsonStr: String,
+        publishNow: Boolean,
+        forcedStatus: String? = null
+    ): SchoolHighlightEntity {
+        val o = JSONObject(jsonStr)
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        val now = System.currentTimeMillis()
+        val createdAt = o.optLong("createdAtMillis", now).takeIf { it > 0L } ?: now
+        val publishedAt = o.optLong("publishedAtMillis", now).takeIf { it > 0L } ?: now
+        val expiresAt = o.optLong("expiresAtMillis", SchoolHighlightEntity.computeExpiryMillis(publishedAt))
+            .takeIf { it > 0L } ?: SchoolHighlightEntity.computeExpiryMillis(publishedAt)
+        val resolvedStatus = when {
+            publishNow -> SchoolPostStatus.PUBLISHED
+            forcedStatus == SchoolPostStatus.ARCHIVED -> SchoolPostStatus.ARCHIVED
+            else -> SchoolPostStatus.UNPUBLISHED
+        }
+        return SchoolHighlightEntity(
+            id = id,
+            title = o.optString("title", ""),
+            youtubeShortsUrl = o.getString("youtubeShortsUrl"),
+            status = resolvedStatus,
+            createdAtMillis = createdAt,
+            publishedAtMillis = publishedAt,
+            expiresAtMillis = expiresAt,
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "school_highlights", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
+        )
+    }
+
+    fun JSONObject.putSyncMetadata(
+        remoteId: String,
+        tenantId: String,
+        syncState: String,
+        serverUpdatedAtMillis: Long?,
+        deletedAtMillis: Long? = null,
+        includeSoftDelete: Boolean = true
+    ) {
+        put("remoteId", remoteId)
+        put("tenantId", tenantId)
+        put("syncState", syncState)
+        if (serverUpdatedAtMillis != null) {
+            put("serverUpdatedAtMillis", serverUpdatedAtMillis)
+        } else {
+            put("serverUpdatedAtMillis", JSONObject.NULL)
+        }
+        if (includeSoftDelete) {
+            if (deletedAtMillis != null) {
+                put("deletedAtMillis", deletedAtMillis)
+            } else {
+                put("deletedAtMillis", JSONObject.NULL)
+            }
+        }
+    }
+
+    fun JSONObject.optNullableLong(key: String): Long? {
+        if (!has(key) || isNull(key)) return null
+        return runCatching { getLong(key) }.getOrNull()
     }
 
     fun JSONObject.optNullableString(key: String): String? {

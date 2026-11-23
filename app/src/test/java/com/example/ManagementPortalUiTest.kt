@@ -124,12 +124,16 @@ class ManagementPortalUiTest {
         }
 
         composeTestRule.onNodeWithTag("management_dashboard_grid").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("admin_dashboard_header").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("admin_hero_banner_card").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("mgmt_header_back_btn").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("mgmt_top_search_btn").assertIsDisplayed()
         composeTestRule.onNodeWithTag("mgmt_top_notifications_btn").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("mgmt_top_logout_btn").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("mgmt_top_menu_btn").assertIsDisplayed()
     }
 
     @Test
-    fun `parent portal management expandable section displays all eleven submenus with dedicated screens actions scope and back navigation`() {
+    fun `parent card opens all eleven parent portal management modules with dedicated screens actions scope and back navigation`() {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalAppStrings provides stringsFor(AppLanguage.ENGLISH)) {
                 ChevalierAcademyTheme(themeMode = AppThemeMode.LIGHT) {
@@ -170,24 +174,23 @@ class ManagementPortalUiTest {
             }.getOrDefault(false)
         }
 
-        // 1. Expandable section starts collapsed; existing Admin cards remain visible
-        composeTestRule.onNodeWithTag("admin_parent_portal_mgmt_header").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("dash_card_profile").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("ppm_submenu_card_student_profile").assertDoesNotExist()
-
-        // 2. Expand Parent Portal Management and verify all 11 submenus
-        composeTestRule.onNodeWithTag("admin_parent_portal_mgmt_header").performClick()
+        // 1. Open Parent card from the finalized 8-card Admin Dashboard grid
+        composeTestRule.onNodeWithTag("management_dashboard_grid")
+            .performScrollToNode(hasTestTag("admin_dash_card_parent"))
+        composeTestRule.onNodeWithTag("admin_dash_card_parent").assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("admin_hub_parent").assertIsDisplayed()
         assertEquals(11, ParentPortalAdminModule.entries.size)
 
+        // 2. Verify all 11 Parent Portal management modules are reachable inside Parent hub
         ParentPortalAdminModule.entries.forEach { module ->
-            composeTestRule.onNodeWithTag("management_dashboard_grid")
+            composeTestRule.onNodeWithTag("admin_hub_parent")
                 .performScrollToNode(hasTestTag("ppm_submenu_card_${module.key}"))
             composeTestRule.onNodeWithTag("ppm_submenu_card_${module.key}").assertIsDisplayed()
         }
 
         // 3. Open Student Profile Management, verify scope chips, actions, Preview dialog, and TopBar Back
-        composeTestRule.onNodeWithTag("management_dashboard_grid")
+        composeTestRule.onNodeWithTag("admin_hub_parent")
             .performScrollToNode(hasTestTag("ppm_submenu_card_student_profile"))
         composeTestRule.onNodeWithTag("ppm_submenu_card_student_profile").performClick()
         composeTestRule.waitForIdle()
@@ -212,10 +215,10 @@ class ManagementPortalUiTest {
         composeTestRule.onNodeWithTag("ppm_action_publish").assertIsDisplayed()
         composeTestRule.onNodeWithTag("mgmt_subscreen_back_btn").assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("management_dashboard_grid").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("admin_hub_parent").assertIsDisplayed()
 
         // 4. Open Emergency Information Management and return via screen Back button
-        composeTestRule.onNodeWithTag("management_dashboard_grid")
+        composeTestRule.onNodeWithTag("admin_hub_parent")
             .performScrollToNode(hasTestTag("ppm_submenu_card_emergency_info"))
         composeTestRule.onNodeWithTag("ppm_submenu_card_emergency_info").performClick()
         composeTestRule.waitForIdle()
@@ -224,14 +227,11 @@ class ManagementPortalUiTest {
             .performScrollToNode(hasTestTag("ppm_back_to_dashboard_btn"))
         composeTestRule.onNodeWithTag("ppm_back_to_dashboard_btn").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("management_dashboard_grid").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("admin_hub_parent").assertIsDisplayed()
 
-        // 5. Collapse Parent Portal Management section cleanly
-        composeTestRule.onNodeWithTag("management_dashboard_grid")
-            .performScrollToNode(hasTestTag("admin_parent_portal_mgmt_header"))
-        composeTestRule.onNodeWithTag("admin_parent_portal_mgmt_header").performClick()
+        // 5. Return from Parent Hub to Admin Dashboard Home Page
+        composeTestRule.onNodeWithTag("mgmt_subscreen_back_btn").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("ppm_submenu_card_student_profile").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("dash_card_profile").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("management_dashboard_grid").assertIsDisplayed()
     }
 }

@@ -1,0 +1,929 @@
+{
+  "entities": {
+    "SchoolTenant": {
+      "title": "SchoolTenant",
+      "description": "Root multi-tenant descriptor matching SchoolTenantDescriptor / SchoolTenantContext (e.g., chevalier_academy_dindigul). Publicly readable by exact schoolId only when active; non-listable.",
+      "type": "object",
+      "properties": {
+        "schoolId": {
+          "type": "string",
+          "description": "Canonical tenant identifier matching document ID (e.g., chevalier_academy_dindigul)."
+        },
+        "schoolCode": {
+          "type": "string",
+          "description": "Short school code (e.g., CAMHSS-DGL)."
+        },
+        "officialName": {
+          "type": "string",
+          "description": "Official school name."
+        },
+        "shortName": {
+          "type": "string",
+          "description": "Short display name."
+        },
+        "tenancySchemaLevel": {
+          "type": "integer",
+          "description": "Schema partitioning version matching SchoolTenantContext.TENANCY_SCHEMA_LEVEL."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether this tenant is active for public read access."
+        },
+        "updatedAtMillis": {
+          "type": "integer",
+          "description": "Last update epoch milliseconds."
+        },
+        "serverUpdatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Firestore server timestamp of last cloud update."
+        }
+      },
+      "required": [
+        "schoolId",
+        "schoolCode",
+        "officialName",
+        "shortName",
+        "tenancySchemaLevel",
+        "isActive",
+        "updatedAtMillis"
+      ]
+    },
+    "SchoolProfile": {
+      "title": "SchoolProfile",
+      "description": "Public school profile and About/Contact CMS singleton mirroring Room school_profile (v6).",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "shortName": { "type": "string" },
+        "motto": { "type": "string" },
+        "addressLine": { "type": "string" },
+        "emblemMark": { "type": "string" },
+        "poweredBy": { "type": "string" },
+        "welcomeIntroduction": { "type": "string" },
+        "mediumAndGradesNote": { "type": "string" },
+        "mapCoordinatesOrQuery": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "website": { "type": "string" },
+        "officeHours": { "type": "string" },
+        "principalName": { "type": "string" },
+        "history": { "type": "string" },
+        "vision": { "type": "string" },
+        "mission": { "type": "string" },
+        "affiliationNumber": { "type": "string" },
+        "updatedAtMillis": { "type": "integer" },
+        "profileImageUri": { "type": "string" },
+        "aboutImageUri": { "type": "string" },
+        "remoteId": { "type": "string", "description": "Stable Room v6 remoteId matching document ID." },
+        "tenantId": { "type": "string", "description": "Tenant ID matching parent schoolId." },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "schoolName",
+        "shortName",
+        "motto",
+        "addressLine",
+        "emblemMark",
+        "poweredBy",
+        "updatedAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "CampusHeroPhoto": {
+      "title": "CampusHeroPhoto",
+      "description": "Home hero banner photo mirroring Room campus_hero_photos (v6). Publicly readable only when verified, published, approved, and not soft-deleted.",
+      "type": "object",
+      "properties": {
+        "imageUri": { "type": "string" },
+        "caption": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "addedAtMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "imageUri",
+        "displayOrder",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "addedAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "AcademicInfo": {
+      "title": "AcademicInfo",
+      "description": "Academic program information mirroring Room academic_info (v6).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "updatedAtMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "category",
+        "description",
+        "displayOrder",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "updatedAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "HigherSecondaryCourse": {
+      "title": "HigherSecondaryCourse",
+      "description": "Higher secondary stream and group course mirroring Room higher_secondary_courses (v6).",
+      "type": "object",
+      "properties": {
+        "streamTitle": { "type": "string" },
+        "groupCode": { "type": "string" },
+        "subjectsSummary": { "type": "string" },
+        "mediumOfInstruction": { "type": "string" },
+        "classLevelLabel": { "type": "string" },
+        "eligibilityNote": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "streamTitle",
+        "groupCode",
+        "subjectsSummary",
+        "mediumOfInstruction",
+        "displayOrder",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "Facility": {
+      "title": "Facility",
+      "description": "Campus facility record mirroring Room facilities (v6).",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "capacityOrSpec": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "imageUri": { "type": "string" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "name",
+        "category",
+        "description",
+        "displayOrder",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "TransportRoute": {
+      "title": "TransportRoute",
+      "description": "School transport route mirroring Room transport_routes (v6).",
+      "type": "object",
+      "properties": {
+        "routeNumber": { "type": "string" },
+        "routeName": { "type": "string" },
+        "stopsSummary": { "type": "string" },
+        "morningTiming": { "type": "string" },
+        "afternoonTiming": { "type": "string" },
+        "coordinatorContact": { "type": "string" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "displayOrder": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "routeNumber",
+        "routeName",
+        "stopsSummary",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "displayOrder",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "NewsItem": {
+      "title": "NewsItem",
+      "description": "School news article mirroring Room news_items (v6).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "fullBody": { "type": "string" },
+        "publishedDateText": { "type": "string" },
+        "publishedAtMillis": { "type": "integer" },
+        "isFeatured": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "imageUri": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "summary",
+        "fullBody",
+        "publishedDateText",
+        "publishedAtMillis",
+        "isFeatured",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "displayOrder",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Official school announcement mirroring Room announcements (v6).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "priorityLabel": { "type": "string" },
+        "issuedDateText": { "type": "string" },
+        "issuedAtMillis": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "imageUri": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "message",
+        "issuedDateText",
+        "issuedAtMillis",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "displayOrder",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "GalleryAlbum": {
+      "title": "GalleryAlbum",
+      "description": "Photo/video gallery album mirroring Room gallery_albums (v6).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "eventDateText": { "type": "string" },
+        "coverMediaUri": { "type": "string" },
+        "createdAtMillis": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "displayOrder": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "category",
+        "createdAtMillis",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "displayOrder",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "GalleryMedia": {
+      "title": "GalleryMedia",
+      "description": "Gallery media item mirroring Room gallery_media (v6), referencing parent album by stable albumRemoteId.",
+      "type": "object",
+      "properties": {
+        "albumRemoteId": { "type": "string", "description": "Stable remoteId of parent GalleryAlbum." },
+        "title": { "type": "string" },
+        "caption": { "type": "string" },
+        "mediaUri": { "type": "string" },
+        "mediaType": { "type": "string", "enum": ["IMAGE", "YOUTUBE"] },
+        "displayOrder": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "addedAtMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "albumRemoteId",
+        "mediaUri",
+        "mediaType",
+        "displayOrder",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "addedAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "SocialMediaLink": {
+      "title": "SocialMediaLink",
+      "description": "Official school social media link mirroring Room social_media_links (v6).",
+      "type": "object",
+      "properties": {
+        "platformName": { "type": "string" },
+        "handleOrLabel": { "type": "string" },
+        "url": { "type": "string" },
+        "displayOrder": { "type": "integer" },
+        "isVerified": { "type": "boolean" },
+        "isPublished": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "approvalStatus": { "type": "string", "enum": ["APPROVED", "PENDING", "DRAFT", "REJECTED"] },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "platformName",
+        "handleOrLabel",
+        "url",
+        "displayOrder",
+        "isVerified",
+        "isPublished",
+        "isApproved",
+        "approvalStatus",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "SchoolPost": {
+      "title": "SchoolPost",
+      "description": "Home Social Network post mirroring Room school_posts (v6). Uses native bounded photoUris array (max 10) mapped from Room photoUrisJson.",
+      "type": "object",
+      "properties": {
+        "postType": { "type": "string", "enum": ["YOUTUBE_DIRECT", "ADMIN_CUSTOM_VIDEO", "PHOTO"] },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "youtubeUrl": { "type": "string" },
+        "customThumbnailUri": { "type": "string" },
+        "photoUris": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered list of photo URIs (maximum 10), mapped to/from Room photoUrisJson."
+        },
+        "status": { "type": "string", "enum": ["PUBLISHED", "UNPUBLISHED", "ARCHIVED"] },
+        "isFeatured": { "type": "boolean" },
+        "createdAtMillis": { "type": "integer" },
+        "publishedAtMillis": { "type": "integer" },
+        "updatedAtMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "postType",
+        "category",
+        "title",
+        "description",
+        "photoUris",
+        "status",
+        "isFeatured",
+        "createdAtMillis",
+        "updatedAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "SchoolHighlight": {
+      "title": "SchoolHighlight",
+      "description": "24-hour YouTube Shorts highlight mirroring Room school_highlights (v6).",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "youtubeShortsUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["PUBLISHED", "UNPUBLISHED", "ARCHIVED"] },
+        "createdAtMillis": { "type": "integer" },
+        "publishedAtMillis": { "type": "integer" },
+        "expiresAtMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "youtubeShortsUrl",
+        "status",
+        "createdAtMillis",
+        "publishedAtMillis",
+        "expiresAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "CloudManagementAccount": {
+      "title": "CloudManagementAccount",
+      "description": "Internal cloud staff/admin identity profile keyed by Firebase Auth uid. Never stores local PIN or recovery hashes.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID matching document ID." },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["MASTER_ADMIN", "SUPER_OWNER", "STAFF"] },
+        "isActive": { "type": "boolean" },
+        "createdAtMillis": { "type": "integer" },
+        "updatedAtMillis": { "type": "integer" },
+        "tenantId": { "type": "string" },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "username",
+        "displayName",
+        "role",
+        "isActive",
+        "createdAtMillis",
+        "updatedAtMillis",
+        "tenantId"
+      ]
+    },
+    "CloudStaffPermission": {
+      "title": "CloudStaffPermission",
+      "description": "Internal section-level RBAC permission record mirroring Room staff_permissions (v6), keyed by ManagementSection.key.",
+      "type": "object",
+      "properties": {
+        "accountUid": { "type": "string", "description": "Parent CloudManagementAccount UID." },
+        "sectionKey": {
+          "type": "string",
+          "enum": [
+            "SCHOOL_PROFILE",
+            "LOGO_BANNER",
+            "ABOUT_SCHOOL",
+            "ACADEMICS",
+            "HIGHER_SECONDARY_COURSES",
+            "FACILITIES",
+            "TRANSPORT",
+            "NEWS",
+            "ANNOUNCEMENTS",
+            "PHOTO_GALLERY",
+            "CONTACT_DETAILS",
+            "SOCIAL_MEDIA",
+            "SCHOOL_POSTS",
+            "SCHOOL_HIGHLIGHTS",
+            "MEDIA_STUDIO",
+            "STAFF_MANAGEMENT",
+            "NOTIFICATIONS",
+            "ACTIVITY_LOG",
+            "BACKUP_RESTORE",
+            "APP_SETTINGS"
+          ]
+        },
+        "canView": { "type": "boolean" },
+        "canCreate": { "type": "boolean" },
+        "canEdit": { "type": "boolean" },
+        "canDelete": { "type": "boolean" },
+        "canPublish": { "type": "boolean" },
+        "tenantId": { "type": "string" },
+        "updatedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "accountUid",
+        "sectionKey",
+        "canView",
+        "canCreate",
+        "canEdit",
+        "canDelete",
+        "canPublish",
+        "tenantId"
+      ]
+    },
+    "ContentApproval": {
+      "title": "ContentApproval",
+      "description": "Internal governance approval queue item mirroring Room content_approvals (v6). Never publicly readable.",
+      "type": "object",
+      "properties": {
+        "sectionKey": { "type": "string" },
+        "targetRecordRemoteId": { "type": "string" },
+        "recordTitle": { "type": "string" },
+        "previousSnapshotJson": { "type": "string" },
+        "proposedPayloadJson": { "type": "string" },
+        "changeSummary": { "type": "string" },
+        "submittedByUid": { "type": "string" },
+        "submittedByName": { "type": "string" },
+        "submittedAtMillis": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "DRAFT_DISCARDED",
+            "PENDING_APPROVAL",
+            "APPROVED",
+            "REJECTED",
+            "PUBLISHED",
+            "UNPUBLISHED"
+          ]
+        },
+        "reviewedByUid": { "type": "string" },
+        "reviewedByName": { "type": "string" },
+        "reviewedAtMillis": { "type": "integer" },
+        "rejectionReason": { "type": "string" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "sectionKey",
+        "targetRecordRemoteId",
+        "recordTitle",
+        "proposedPayloadJson",
+        "changeSummary",
+        "submittedByUid",
+        "submittedByName",
+        "submittedAtMillis",
+        "status",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "VersionHistory": {
+      "title": "VersionHistory",
+      "description": "Append-only immutable content version snapshot mirroring Room version_history (v6). Client updates and deletes are permanently forbidden.",
+      "type": "object",
+      "properties": {
+        "sectionKey": { "type": "string" },
+        "recordRemoteId": { "type": "string" },
+        "versionNumber": { "type": "integer" },
+        "recordTitle": { "type": "string" },
+        "previousContentJson": { "type": "string" },
+        "contentSnapshotJson": { "type": "string" },
+        "changedByUid": { "type": "string" },
+        "changedByName": { "type": "string" },
+        "changedAtMillis": { "type": "integer" },
+        "changeSummary": { "type": "string" },
+        "approvalStatus": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "DRAFT_DISCARDED",
+            "PENDING_APPROVAL",
+            "APPROVED",
+            "REJECTED",
+            "PUBLISHED",
+            "UNPUBLISHED"
+          ]
+        },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "sectionKey",
+        "recordRemoteId",
+        "versionNumber",
+        "recordTitle",
+        "contentSnapshotJson",
+        "changedByUid",
+        "changedByName",
+        "changedAtMillis",
+        "changeSummary",
+        "approvalStatus",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "MediaStudioItem": {
+      "title": "MediaStudioItem",
+      "description": "Internal media studio metadata catalog mirroring Room media_studio_items (v6). Uses native assignedSections array mapped from assignedSectionsCsv.",
+      "type": "object",
+      "properties": {
+        "mediaKind": { "type": "string", "enum": ["IMAGE", "YOUTUBE"] },
+        "title": { "type": "string" },
+        "caption": { "type": "string" },
+        "categoryOrAlbum": { "type": "string" },
+        "originalUri": { "type": "string" },
+        "optimizedUri": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "widthPx": { "type": "integer" },
+        "heightPx": { "type": "integer" },
+        "fileSizeBytes": { "type": "integer" },
+        "optimizedSizeBytes": { "type": "integer" },
+        "assignedSections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of ManagementSection keys mapped to/from Room assignedSectionsCsv."
+        },
+        "isFeatured": { "type": "boolean" },
+        "displayOrder": { "type": "integer" },
+        "approvalStatus": {
+          "type": "string",
+          "enum": [
+            "DRAFT",
+            "DRAFT_DISCARDED",
+            "PENDING_APPROVAL",
+            "APPROVED",
+            "REJECTED",
+            "PUBLISHED",
+            "UNPUBLISHED"
+          ]
+        },
+        "createdByUid": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "createdAtMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "deletedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "mediaKind",
+        "title",
+        "categoryOrAlbum",
+        "originalUri",
+        "mimeType",
+        "widthPx",
+        "heightPx",
+        "fileSizeBytes",
+        "optimizedSizeBytes",
+        "assignedSections",
+        "isFeatured",
+        "displayOrder",
+        "approvalStatus",
+        "createdByName",
+        "createdAtMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Append-only immutable governance audit log mirroring Room activity_logs (v6). Client updates and deletes are permanently forbidden.",
+      "type": "object",
+      "properties": {
+        "actionType": { "type": "string" },
+        "actorUid": { "type": "string" },
+        "actorName": { "type": "string" },
+        "actorRole": { "type": "string", "enum": ["MASTER_ADMIN", "SUPER_OWNER", "STAFF", "SYSTEM"] },
+        "sectionKey": { "type": "string" },
+        "recordRef": { "type": "string" },
+        "details": { "type": "string" },
+        "timestampMillis": { "type": "integer" },
+        "remoteId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "syncState": { "type": "string", "enum": ["LOCAL_ONLY", "PENDING_UPLOAD", "SYNCED", "PENDING_DELETE", "CONFLICT"] },
+        "serverUpdatedAtMillis": { "type": "integer" },
+        "serverUpdatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "actionType",
+        "actorName",
+        "actorRole",
+        "sectionKey",
+        "recordRef",
+        "details",
+        "timestampMillis",
+        "remoteId",
+        "tenantId",
+        "syncState"
+      ]
+    },
+    "PrivateStudentReserved": {
+      "title": "PrivateStudentReserved",
+      "description": "Reserved isolated namespace for future student records. Permanently locked down (deny all) in Phase 4.2B until server-verifiable parent/student RBAC is designed.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "tenantId": { "type": "string" }
+      },
+      "required": ["studentId", "tenantId"]
+    },
+    "PrivateParentLinkReserved": {
+      "title": "PrivateParentLinkReserved",
+      "description": "Reserved isolated namespace for future parent-to-student linkage records. Permanently locked down (deny all) in Phase 4.2B.",
+      "type": "object",
+      "properties": {
+        "linkId": { "type": "string" },
+        "parentUid": { "type": "string" },
+        "studentId": { "type": "string" },
+        "tenantId": { "type": "string" }
+      },
+      "required": ["linkId", "parentUid", "studentId", "tenantId"]
+    }
+  },
+  "firestore": {
+    "/schools/{schoolId}": {
+      "schema": { "$ref": "#/entities/SchoolTenant" },
+      "description": "Tenant root document. Public get allowed for active tenant by exact schoolId; list and all writes denied."
+    },
+    "/schools/{schoolId}/school_profile/{remoteId}": {
+      "schema": { "$ref": "#/entities/SchoolProfile" },
+      "description": "Public school profile singleton (Room school_profile). Public read when tenantId == schoolId; writes denied until Phase 4.3 cloud auth."
+    },
+    "/schools/{schoolId}/campus_hero_photos/{remoteId}": {
+      "schema": { "$ref": "#/entities/CampusHeroPhoto" },
+      "description": "Public-when-published campus hero photos (Room campus_hero_photos). Drafts, unapproved, and soft-deleted records denied."
+    },
+    "/schools/{schoolId}/academic_info/{remoteId}": {
+      "schema": { "$ref": "#/entities/AcademicInfo" },
+      "description": "Public-when-published academic info records (Room academic_info)."
+    },
+    "/schools/{schoolId}/higher_secondary_courses/{remoteId}": {
+      "schema": { "$ref": "#/entities/HigherSecondaryCourse" },
+      "description": "Public-when-published higher secondary courses (Room higher_secondary_courses)."
+    },
+    "/schools/{schoolId}/facilities/{remoteId}": {
+      "schema": { "$ref": "#/entities/Facility" },
+      "description": "Public-when-published campus facilities (Room facilities)."
+    },
+    "/schools/{schoolId}/transport_routes/{remoteId}": {
+      "schema": { "$ref": "#/entities/TransportRoute" },
+      "description": "Public-when-published transport routes (Room transport_routes)."
+    },
+    "/schools/{schoolId}/news_items/{remoteId}": {
+      "schema": { "$ref": "#/entities/NewsItem" },
+      "description": "Public-when-published school news items (Room news_items)."
+    },
+    "/schools/{schoolId}/announcements/{remoteId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Public-when-published school announcements (Room announcements)."
+    },
+    "/schools/{schoolId}/gallery_albums/{remoteId}": {
+      "schema": { "$ref": "#/entities/GalleryAlbum" },
+      "description": "Public-when-published gallery albums (Room gallery_albums)."
+    },
+    "/schools/{schoolId}/gallery_media/{remoteId}": {
+      "schema": { "$ref": "#/entities/GalleryMedia" },
+      "description": "Public-when-published gallery media items (Room gallery_media)."
+    },
+    "/schools/{schoolId}/social_media_links/{remoteId}": {
+      "schema": { "$ref": "#/entities/SocialMediaLink" },
+      "description": "Public-when-published official social links (Room social_media_links)."
+    },
+    "/schools/{schoolId}/school_posts/{remoteId}": {
+      "schema": { "$ref": "#/entities/SchoolPost" },
+      "description": "Public-when-published Home Social Network posts (Room school_posts). Only status == PUBLISHED and non-deleted records are publicly readable."
+    },
+    "/schools/{schoolId}/school_highlights/{remoteId}": {
+      "schema": { "$ref": "#/entities/SchoolHighlight" },
+      "description": "Public-when-published 24-hour YouTube Shorts highlights (Room school_highlights). Only status == PUBLISHED and non-deleted records are publicly readable."
+    },
+    "/schools/{schoolId}/management_accounts/{uid}": {
+      "schema": { "$ref": "#/entities/CloudManagementAccount" },
+      "description": "Internal governance identity profile (no PIN/recovery verifiers). Strictly denied to public and unverified clients in Phase 4.2B."
+    },
+    "/schools/{schoolId}/management_accounts/{uid}/staff_permissions/{sectionKey}": {
+      "schema": { "$ref": "#/entities/CloudStaffPermission" },
+      "description": "Internal section-level staff permissions. Strictly denied to public and unverified clients in Phase 4.2B."
+    },
+    "/schools/{schoolId}/content_approvals/{remoteId}": {
+      "schema": { "$ref": "#/entities/ContentApproval" },
+      "description": "Internal content approval queue. Strictly denied to public and unverified clients in Phase 4.2B; client hard-delete forbidden."
+    },
+    "/schools/{schoolId}/version_history/{remoteId}": {
+      "schema": { "$ref": "#/entities/VersionHistory" },
+      "description": "Internal append-only content version history. Public reads denied; client updates and deletes permanently forbidden."
+    },
+    "/schools/{schoolId}/media_studio_items/{remoteId}": {
+      "schema": { "$ref": "#/entities/MediaStudioItem" },
+      "description": "Internal Media Studio asset metadata catalog. Strictly denied to public and unverified clients in Phase 4.2B."
+    },
+    "/schools/{schoolId}/activity_logs/{remoteId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Internal append-only governance audit trail. Public reads denied; client updates and deletes permanently forbidden."
+    },
+    "/schools/{schoolId}/private_students/{studentId}": {
+      "schema": { "$ref": "#/entities/PrivateStudentReserved" },
+      "description": "Reserved isolated private student records namespace. Default-deny all reads and writes."
+    },
+    "/schools/{schoolId}/private_parent_links/{linkId}": {
+      "schema": { "$ref": "#/entities/PrivateParentLinkReserved" },
+      "description": "Reserved isolated parent-student linkage namespace. Default-deny all reads and writes."
+    }
+  }
+}

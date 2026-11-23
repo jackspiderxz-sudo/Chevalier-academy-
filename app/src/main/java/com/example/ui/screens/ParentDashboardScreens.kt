@@ -32,26 +32,24 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.EditCalendar
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Emergency
-import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Newspaper
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
@@ -76,7 +74,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -104,11 +101,13 @@ import com.example.R
 import com.example.core.i18n.AppStrings
 import com.example.core.i18n.LocalAppStrings
 import com.example.data.local.entity.AnnouncementEntity
-import com.example.data.local.entity.NewsItemEntity
+import com.example.data.local.entity.GalleryMediaEntity
+import com.example.data.local.entity.SchoolPostEntity
+import com.example.data.local.entity.SchoolPostStatus
 import com.example.data.local.entity.SchoolProfileEntity
 import com.example.ui.components.AnnouncementDetailDialog
 import com.example.ui.components.ManagedPublicImage
-import com.example.ui.components.NewsDetailDialog
+import com.example.ui.components.PhotoLightboxDialog
 import com.example.ui.components.PoweredByJkLabsFooter
 import com.example.ui.components.SectionHeaderText
 import com.example.ui.components.VerifiedFieldRow
@@ -137,7 +136,8 @@ enum class ParentModuleId(val routeKey: String) {
     PARENT_TEACHER_COMMUNICATION("parent_teacher_communication"),
     LEAVE_REQUEST("leave_request"),
     SCHOOL_CIRCULARS("school_circulars"),
-    EMERGENCY_INFO("emergency_info");
+    EMERGENCY_INFO("emergency_info"),
+    PARENT_GUIDANCE("parent_guidance");
 
     companion object {
         fun fromRouteKey(key: String?): ParentModuleId =
@@ -172,6 +172,7 @@ fun parentModuleTitle(moduleId: ParentModuleId, strings: AppStrings): String = w
     ParentModuleId.LEAVE_REQUEST -> strings.parentModuleLeaveRequest
     ParentModuleId.SCHOOL_CIRCULARS -> strings.parentModuleSchoolCirculars
     ParentModuleId.EMERGENCY_INFO -> strings.parentModuleEmergencyInfo
+    ParentModuleId.PARENT_GUIDANCE -> strings.parentModuleParentGuidance
 }
 
 private fun parentModuleDescriptor(
@@ -255,6 +256,13 @@ private fun parentModuleDescriptor(
         icon = Icons.Outlined.Emergency,
         tone = ModuleAccentTone.BURGUNDY
     )
+    ParentModuleId.PARENT_GUIDANCE -> ParentModuleDescriptor(
+        id = moduleId,
+        title = strings.parentModuleParentGuidance,
+        description = strings.parentModuleParentGuidanceDesc,
+        icon = Icons.Outlined.Lightbulb,
+        tone = ModuleAccentTone.ROYAL_GOLD
+    )
 }
 
 @Composable
@@ -264,6 +272,7 @@ fun ParentPortalTopBar(
     onToggleSearch: () -> Unit,
     onNotificationsClick: () -> Unit,
     onGalleryClick: () -> Unit,
+    onBookmarksClick: () -> Unit = {},
     onOpenDrawerClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
@@ -403,6 +412,21 @@ fun ParentPortalTopBar(
                                 modifier = Modifier.testTag("top_bar_menu_gallery")
                             )
                             DropdownMenuItem(
+                                text = { Text(text = strings.titleBookmarks) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.BookmarkBorder,
+                                        contentDescription = null,
+                                        tint = brand.burgundy
+                                    )
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    onBookmarksClick()
+                                },
+                                modifier = Modifier.testTag("top_bar_menu_bookmarks")
+                            )
+                            DropdownMenuItem(
                                 text = { Text(text = strings.parentMenuDrawerOption) },
                                 leadingIcon = {
                                     Icon(
@@ -444,16 +468,21 @@ fun ParentPortalTopBar(
     }
 }
 
+private data class ParentSocialPhotoLightbox(
+    val photos: List<GalleryMediaEntity>,
+    val index: Int
+)
+
 @Composable
 fun ParentDashboardScreen(
-    announcements: List<AnnouncementEntity>,
-    newsItems: List<NewsItemEntity>,
+    schoolProfile: SchoolProfileEntity,
+    publishedPosts: List<SchoolPostEntity>,
     isSearchActive: Boolean,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onOpenModule: (ParentModuleId) -> Unit,
-    onOpenAllUpdates: () -> Unit,
-    studentPreview: ParentStudentPreview? = null
+    studentPreview: ParentStudentPreview? = null,
+    onOpenExternalYouTube: ((String) -> Unit)? = null
 ) {
     val strings = LocalAppStrings.current
     val brand = LocalBrandPalette.current
@@ -484,8 +513,25 @@ fun ParentDashboardScreen(
         }
     }
 
-    var selectedAnnouncement by remember { mutableStateOf<AnnouncementEntity?>(null) }
-    var selectedNews by remember { mutableStateOf<NewsItemEntity?>(null) }
+    // Fixed 4-column x 3-row grid for the 12 Parent Services cards
+    val moduleColumns = 4
+    val moduleRows = remember(filteredModules) {
+        filteredModules.chunked(moduleColumns)
+    }
+
+    // Reuse the existing School Home Page published social-feed content source & ordering
+    val publicPosts = remember(publishedPosts) {
+        publishedPosts
+            .filter { it.status == SchoolPostStatus.PUBLISHED }
+            .sortedWith(
+                compareByDescending<SchoolPostEntity> { it.isFeatured }
+                    .thenByDescending { it.publishedAtMillis ?: it.createdAtMillis }
+                    .thenByDescending { it.id }
+            )
+    }
+
+    var activeInlinePostId by remember { mutableStateOf<Long?>(null) }
+    var activeLightbox by remember { mutableStateOf<ParentSocialPhotoLightbox?>(null) }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -493,16 +539,6 @@ fun ParentDashboardScreen(
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.TopCenter
     ) {
-        val effectiveContentWidth = minOf(maxWidth, 860.dp) - 32.dp
-        val moduleColumns = when {
-            effectiveContentWidth >= 720.dp -> 4
-            effectiveContentWidth >= 480.dp -> 3
-            else -> 2
-        }
-        val moduleRows = remember(filteredModules, moduleColumns) {
-            filteredModules.chunked(moduleColumns)
-        }
-
         LazyColumn(
             modifier = Modifier
                 .widthIn(max = 860.dp)
@@ -562,71 +598,16 @@ fun ParentDashboardScreen(
                 }
             }
 
-            // SECTION B — STUDENT INFORMATION CARD
-            item {
+            // 2. STUDENT INFORMATION HERO PANEL (preserved design & content)
+            item(key = "parent_hero_student_card") {
                 StudentInformationCard(
                     student = activeStudent,
                     onClick = { onOpenModule(ParentModuleId.STUDENT_PROFILE) }
                 )
             }
 
-            // SECTION C — YOUR CHILD AT A GLANCE
-            item {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.testTag("parent_glance_section")
-                ) {
-                    SectionHeaderText(title = strings.parentGlanceSectionTitle)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Min),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ChildGlanceOverviewCard(
-                            title = strings.parentAttendanceOverviewTitle,
-                            statusText = strings.parentAttendanceOverviewEmpty,
-                            badgeText = strings.parentAwaitingStudentLinkBadge,
-                            icon = Icons.Outlined.EventAvailable,
-                            accentColor = brand.forestGreen,
-                            iconContainerColor = brand.forestGreenContainer,
-                            onClick = { onOpenModule(ParentModuleId.ATTENDANCE) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .testTag("parent_glance_attendance_card")
-                        )
-                        ChildGlanceOverviewCard(
-                            title = strings.parentExamResultsOverviewTitle,
-                            statusText = strings.parentExamResultsOverviewEmpty,
-                            badgeText = strings.parentAwaitingStudentLinkBadge,
-                            icon = Icons.Outlined.Assessment,
-                            accentColor = brand.burgundy,
-                            iconContainerColor = brand.burgundy.copy(alpha = 0.12f),
-                            onClick = { onOpenModule(ParentModuleId.EXAMS_RESULTS) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .testTag("parent_glance_exams_card")
-                        )
-                    }
-                }
-            }
-
-            // SECTION D — LATEST SCHOOL UPDATES
-            item {
-                LatestSchoolUpdatesCardSection(
-                    announcements = announcements,
-                    newsItems = newsItems,
-                    onViewAllClick = onOpenAllUpdates,
-                    onAnnouncementClick = { selectedAnnouncement = it },
-                    onNewsClick = { selectedNews = it },
-                    onHomeworkClick = { onOpenModule(ParentModuleId.HOMEWORK_ASSIGNMENTS) }
-                )
-            }
-
-            // SECTION E — PARENT SERVICES (11 MODULES)
-            item {
+            // 3. PARENTS SERVICES — 12 cards in a fixed 4-column x 3-row grid
+            item(key = "parent_services_header") {
                 SectionHeaderText(
                     title = strings.parentServicesSectionTitle,
                     modifier = Modifier.testTag("parent_services_section")
@@ -634,7 +615,7 @@ fun ParentDashboardScreen(
             }
 
             if (filteredModules.isEmpty() && searchQuery.isNotBlank()) {
-                item {
+                item(key = "parent_services_search_empty") {
                     Card(
                         shape = MaterialTheme.shapes.medium,
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -657,13 +638,13 @@ fun ParentDashboardScreen(
             } else {
                 items(
                     items = moduleRows,
-                    key = { row -> row.joinToString("_") { it.id.routeKey } }
+                    key = { row -> "parent_services_row_" + row.joinToString("_") { it.id.routeKey } }
                 ) { rowModules ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(IntrinsicSize.Max),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowModules.forEach { module ->
                             ParentServiceModuleCard(
@@ -672,7 +653,7 @@ fun ParentDashboardScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .heightIn(min = 116.dp)
+                                    .heightIn(min = 96.dp)
                                     .testTag("parent_module_card_${module.id.routeKey}")
                             )
                         }
@@ -683,24 +664,105 @@ fun ParentDashboardScreen(
                 }
             }
 
-            // SECTION F — FOOTER
-            item {
-                PoweredByJkLabsFooter(modifier = Modifier.testTag("powered_by_jk_labs_footer"))
+            // 4. STUDENT SOCIAL FEED (reuses Home Page social-feed system without engagement actions)
+            item(key = "parent_student_social_feed_header") {
+                SectionHeaderText(
+                    title = strings.parentStudentSocialFeedTitle,
+                    modifier = Modifier.testTag("parent_student_social_feed_section")
+                )
+            }
+
+            if (publicPosts.isEmpty()) {
+                item(key = "parent_student_social_feed_empty") {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("parent_social_feed_empty_card"),
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = brand.burgundy.copy(alpha = 0.12f),
+                                border = BorderStroke(1.dp, brand.royalGold.copy(alpha = 0.6f)),
+                                modifier = Modifier.size(52.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.DynamicFeed,
+                                        contentDescription = strings.parentStudentSocialFeedTitle,
+                                        tint = brand.burgundy,
+                                        modifier = Modifier.size(26.dp)
+                                    )
+                                }
+                            }
+                            Text(
+                                text = strings.socialFeedEmptyTitle,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = strings.parentStudentSocialFeedEmptyDesc,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+            } else {
+                items(publicPosts, key = { "parent_feed_post_${it.id}" }) { post ->
+                    SchoolSocialPostCard(
+                        post = post,
+                        profile = schoolProfile,
+                        isLiked = false,
+                        isBookmarked = false,
+                        onToggleLike = {},
+                        onToggleBookmark = {},
+                        onPlayYouTube = { _, _ ->
+                            activeInlinePostId = post.id
+                        },
+                        onOpenPhotoLightbox = { idx ->
+                            val mediaList = schoolPostPhotosToGalleryMedia(post)
+                            if (mediaList.isNotEmpty() && idx in mediaList.indices) {
+                                activeInlinePostId = null
+                                activeLightbox = ParentSocialPhotoLightbox(photos = mediaList, index = idx)
+                            }
+                        },
+                        onOpenExternalYouTube = onOpenExternalYouTube,
+                        isInlinePlaying = activeInlinePostId == post.id,
+                        onStopInlinePlayback = {
+                            if (activeInlinePostId == post.id) {
+                                activeInlinePostId = null
+                            }
+                        },
+                        onInlinePlayerDisposed = {
+                            if (activeInlinePostId == post.id) {
+                                activeInlinePostId = null
+                            }
+                        },
+                        showEngagementActions = false
+                    )
+                }
             }
         }
     }
 
-    selectedAnnouncement?.let { item ->
-        AnnouncementDetailDialog(
-            announcement = item,
-            onDismiss = { selectedAnnouncement = null }
-        )
-    }
-
-    selectedNews?.let { item ->
-        NewsDetailDialog(
-            newsItem = item,
-            onDismiss = { selectedNews = null }
+    activeLightbox?.let { lb ->
+        PhotoLightboxDialog(
+            photos = lb.photos,
+            currentIndex = lb.index,
+            onIndexChange = { newIndex -> activeLightbox = lb.copy(index = newIndex) },
+            onDismiss = { activeLightbox = null }
         )
     }
 }
@@ -882,225 +944,6 @@ private fun StudentInformationCard(
     }
 }
 
-@Composable
-private fun ChildGlanceOverviewCard(
-    title: String,
-    statusText: String,
-    badgeText: String,
-    icon: ImageVector,
-    accentColor: Color,
-    iconContainerColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val brand = LocalBrandPalette.current
-    Card(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = iconContainerColor,
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = title,
-                                tint = accentColor,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Surface(
-                color = brand.royalGold.copy(alpha = 0.16f),
-                shape = RoundedCornerShape(6.dp),
-                border = BorderStroke(0.6.dp, brand.royalGold.copy(alpha = 0.5f))
-            ) {
-                Text(
-                    text = badgeText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LatestSchoolUpdatesCardSection(
-    announcements: List<AnnouncementEntity>,
-    newsItems: List<NewsItemEntity>,
-    onViewAllClick: () -> Unit,
-    onAnnouncementClick: (AnnouncementEntity) -> Unit,
-    onNewsClick: (NewsItemEntity) -> Unit,
-    onHomeworkClick: () -> Unit
-) {
-    val strings = LocalAppStrings.current
-    val brand = LocalBrandPalette.current
-    val recentAnnouncements = remember(announcements) { announcements.take(2) }
-    val recentNews = remember(newsItems) { newsItems.take(1) }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.testTag("parent_latest_updates_section")
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SectionHeaderText(
-                title = strings.parentLatestUpdatesTitle,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(
-                onClick = onViewAllClick,
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .testTag("parent_updates_view_all")
-            ) {
-                Text(
-                    text = strings.viewAll,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = brand.burgundy
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = brand.burgundy,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-
-        Card(
-            shape = MaterialTheme.shapes.large,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                // 1. School Announcements (live published data if present, else clean pending slot)
-                if (recentAnnouncements.isNotEmpty()) {
-                    recentAnnouncements.forEachIndexed { index, announcement ->
-                        ParentUpdateRowItem(
-                            categoryLabel = announcement.priorityLabel ?: strings.parentUpdateTypeAnnouncement,
-                            title = announcement.title,
-                            subtitle = announcement.message,
-                            dateText = announcement.issuedDateText,
-                            icon = Icons.Outlined.Campaign,
-                            accentColor = brand.burgundy,
-                            onClick = { onAnnouncementClick(announcement) },
-                            modifier = Modifier.testTag("parent_update_announcement_${announcement.id}")
-                        )
-                        if (index < recentAnnouncements.lastIndex) {
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                    }
-                } else {
-                    ParentUpdateRowItem(
-                        categoryLabel = strings.parentUpdateTypeAnnouncement,
-                        title = strings.titleAnnouncements,
-                        subtitle = strings.parentSchoolUpdatesEmptyNotice,
-                        dateText = null,
-                        icon = Icons.Outlined.Campaign,
-                        accentColor = brand.burgundy,
-                        onClick = onViewAllClick,
-                        modifier = Modifier.testTag("parent_update_announcement_placeholder")
-                    )
-                }
-
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-
-                // 2. New Homework Notification row
-                ParentUpdateRowItem(
-                    categoryLabel = strings.parentUpdateTypeHomework,
-                    title = strings.parentModuleHomework,
-                    subtitle = strings.parentHomeworkEmptyNotice,
-                    dateText = null,
-                    icon = Icons.Outlined.MenuBook,
-                    accentColor = brand.forestGreen,
-                    onClick = onHomeworkClick,
-                    modifier = Modifier.testTag("parent_update_homework_row")
-                )
-
-                // 3. Other important school updates (live published news if available)
-                if (recentNews.isNotEmpty()) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    val newsItem = recentNews.first()
-                    ParentUpdateRowItem(
-                        categoryLabel = strings.parentUpdateTypeGeneral,
-                        title = newsItem.title,
-                        subtitle = newsItem.summary,
-                        dateText = newsItem.publishedDateText,
-                        icon = Icons.Outlined.Newspaper,
-                        accentColor = brand.goldAccentText,
-                        onClick = { onNewsClick(newsItem) },
-                        modifier = Modifier.testTag("parent_update_news_${newsItem.id}")
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 private fun ParentUpdateRowItem(
@@ -1214,47 +1057,34 @@ private fun ParentServiceModuleCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.Start
+                .padding(horizontal = 6.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = containerColor,
+                modifier = Modifier.size(40.dp)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = containerColor,
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = descriptor.icon,
-                            contentDescription = descriptor.title,
-                            tint = accentColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = descriptor.icon,
+                        contentDescription = descriptor.title,
+                        tint = accentColor,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
-
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    modifier = Modifier.size(18.dp)
-                )
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             Text(
                 text = descriptor.title,
-                style = MaterialTheme.typography.titleSmall.copy(
+                style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.SemiBold,
-                    lineHeight = 19.sp
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )

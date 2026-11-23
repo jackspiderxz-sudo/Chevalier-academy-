@@ -123,12 +123,11 @@ export function renderOnboarding(state, s) {
 }
 
 /* ==========================================================================
-   HOME SCREEN — Exact 6 Sections Matching Android HomeScreen
+   HOME SCREEN — Exact 5 Sections Matching Android HomeScreen
    ========================================================================== */
 export function renderHomeView(state, s, ui) {
-  const { profile, heroPhotos, news, announcements, galleryMedia, socialLinks } = state;
+  const { profile, heroPhotos, news, announcements, galleryMedia } = state;
   const activeSlide = heroPhotos.length > 0 ? Math.min(ui.heroSlideIndex || 0, heroPhotos.length - 1) : 0;
-  const activeSocials = socialLinks.filter((l) => l.active && l.url);
 
   // Section 1: Hero Banner
   const heroHtml = heroPhotos.length > 0
@@ -235,42 +234,7 @@ export function renderHomeView(state, s, ui) {
       </div>
     </section>
 
-    <!-- SECTION 3 — QUICK ACCESS (4 Cards: Academics, Courses, Facilities, Transport) -->
-    <section data-testid="home_section_quick_access">
-      <div class="section-header"><h2 class="section-title">${esc(s.quickAccessTitle)}</h2></div>
-      <div class="quick-access-grid">
-        <button type="button" class="card interactive" style="text-align:left;" data-route="academics" data-testid="home_quick_academics">
-          <div class="stack-sm">
-            <span class="icon-tile tone-burgundy">${icon('school', 22)}</span>
-            <strong>${esc(s.quickCardAcademicsTitle)}</strong>
-            <span class="muted text-xs">${esc(s.quickCardAcademicsDesc)}</span>
-          </div>
-        </button>
-        <button type="button" class="card interactive" style="text-align:left;" data-route="courses" data-testid="home_quick_courses">
-          <div class="stack-sm">
-            <span class="icon-tile tone-forest">${icon('book', 22)}</span>
-            <strong>${esc(s.quickCardCoursesTitle)}</strong>
-            <span class="muted text-xs">${esc(s.quickCardCoursesDesc)}</span>
-          </div>
-        </button>
-        <button type="button" class="card interactive" style="text-align:left;" data-route="facilities" data-testid="home_quick_facilities">
-          <div class="stack-sm">
-            <span class="icon-tile tone-gold">${icon('apartment', 22)}</span>
-            <strong>${esc(s.quickCardFacilitiesTitle)}</strong>
-            <span class="muted text-xs">${esc(s.quickCardFacilitiesDesc)}</span>
-          </div>
-        </button>
-        <button type="button" class="card interactive" style="text-align:left;" data-route="transport" data-testid="home_quick_transport">
-          <div class="stack-sm">
-            <span class="icon-tile tone-burgundy">${icon('bus', 22)}</span>
-            <strong>${esc(s.quickCardTransportTitle)}</strong>
-            <span class="muted text-xs">${esc(s.quickCardTransportDesc)}</span>
-          </div>
-        </button>
-      </div>
-    </section>
-
-    <!-- SECTION 4 & 5 — UPDATES & GALLERY PREVIEW -->
+    <!-- SECTION 3 & 4 — UPDATES & GALLERY PREVIEW -->
     <section data-testid="home_section_updates">
       <div class="section-header">
         <h2 class="section-title">${esc(s.latestUpdatesTitle)}</h2>
@@ -286,40 +250,6 @@ export function renderHomeView(state, s, ui) {
       </div>
       ${galleryPreviewHtml}
     </section>
-
-    <!-- SECTION 6 — CONTACT & SOCIAL MEDIA -->
-    <section data-testid="home_section_contact_social">
-      <div class="section-header">
-        <h2 class="section-title">${esc(s.contactSocialTitle)}</h2>
-        <button type="button" class="btn btn-text" data-route="contact">${esc(s.viewAll)}</button>
-      </div>
-      <div class="card">
-        ${renderVerifiedField(s.addressLabel, profile.addressLine, 'location', s)}
-        ${renderVerifiedField(s.phoneLabel, profile.phone, 'contact', s)}
-        ${renderVerifiedField(s.emailLabel, profile.email, 'email', s)}
-        <div class="row-wrap" style="margin-top:14px;">
-          <a href="${esc(googleMapsUrl(profile.mapCoordinatesOrQuery || profile.addressLine))}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-forest" style="flex:1;">
-            ${icon('map', 18)} ${esc(s.openMapsActionLabel)}
-          </a>
-          ${profile.phone ? `<a href="tel:${esc(profile.phone)}" class="btn btn-primary">${icon('contact', 18)} ${esc(s.callActionLabel)}</a>` : ''}
-          ${profile.email ? `<a href="mailto:${esc(profile.email)}" class="btn btn-outline">${icon('email', 18)} ${esc(s.emailActionLabel)}</a>` : ''}
-        </div>
-        <div style="border-top:1px solid var(--border-subtle);margin-top:16px;padding-top:12px;">
-          <div class="row-between" style="margin-bottom:8px;">
-            <strong class="text-sm">${esc(s.officialChannelsTitle)}</strong>
-            <button type="button" class="btn btn-text" data-route="social">${esc(s.viewAll)}</button>
-          </div>
-          ${activeSocials.length === 0
-            ? `<span class="badge badge-gold">${esc(s.awaitingVerificationLabel)}</span>`
-            : `<div class="chip-row">${activeSocials.map((link) => `
-                <a href="${esc(safeExternalUrl(link.url))}" target="_blank" rel="noopener noreferrer" class="chip">
-                  ${esc(link.platformName)} ${icon('openInNew', 15)}
-                </a>
-              `).join('')}</div>`}
-        </div>
-      </div>
-    </section>
-
     ${renderFooter(s)}
   `;
 }
@@ -559,6 +489,84 @@ export function renderParentModuleDetailView(state, s, moduleKey) {
    ACADEMICS, COURSES, ABOUT, FACILITIES, TRANSPORT, UPDATES, GALLERY,
    CONTACT, SOCIAL MEDIA, SETTINGS
    ========================================================================== */
+export function renderAcademicsHubView(state, s) {
+  const sections = [
+    {
+      route: 'academics/overview',
+      title: s.titleAcademics,
+      desc: s.quickCardAcademicsDesc,
+      iconName: 'school',
+      tone: 'tone-burgundy',
+      testId: 'academics_card_academics'
+    },
+    {
+      route: 'courses',
+      title: s.titleHigherSecondaryCourses,
+      desc: s.quickCardCoursesDesc,
+      iconName: 'book',
+      tone: 'tone-forest',
+      testId: 'academics_card_courses'
+    },
+    {
+      route: 'about',
+      title: s.titleAboutSchool,
+      desc: `${s.historyLabel}, ${s.visionLabel} & ${s.missionLabel}`,
+      iconName: 'info',
+      tone: 'tone-gold',
+      testId: 'academics_card_about'
+    },
+    {
+      route: 'facilities',
+      title: s.titleFacilities,
+      desc: s.quickCardFacilitiesDesc,
+      iconName: 'apartment',
+      tone: 'tone-burgundy',
+      testId: 'academics_card_facilities'
+    },
+    {
+      route: 'transport',
+      title: s.titleTransport,
+      desc: s.quickCardTransportDesc,
+      iconName: 'bus',
+      tone: 'tone-forest',
+      testId: 'academics_card_transport'
+    },
+    {
+      route: 'updates',
+      title: s.titleNewsAnnouncements,
+      desc: s.latestUpdatesTitle,
+      iconName: 'campaign',
+      tone: 'tone-gold',
+      testId: 'academics_card_news_announcements'
+    },
+    {
+      route: 'gallery',
+      title: s.titleGallery,
+      desc: s.galleryPreviewTitle,
+      iconName: 'gallery',
+      tone: 'tone-burgundy',
+      testId: 'academics_card_gallery'
+    }
+  ];
+
+  return `
+    <section data-testid="academics_hub_screen_list">
+      <div class="academics-sections-grid">
+        ${sections.map((item) => `
+          <button type="button" class="card interactive" style="text-align:left;" data-route="${item.route}" data-testid="${item.testId}">
+            <div class="stack-sm">
+              <span class="icon-tile ${item.tone}">${icon(item.iconName, 22)}</span>
+              <strong>${esc(item.title)}</strong>
+              <span class="muted text-xs">${esc(item.desc)}</span>
+            </div>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+    ${renderFooter(s)}
+  `;
+}
+
 export function renderAcademicsView(state, s) {
   return `
     ${renderSchoolBrandBanner(state.profile, s)}

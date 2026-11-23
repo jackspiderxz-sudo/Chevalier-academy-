@@ -1,6 +1,7 @@
 package com.example.data.local.entity
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 object ApprovalStatus {
@@ -10,7 +11,10 @@ object ApprovalStatus {
     const val REJECTED = "REJECTED"
 }
 
-@Entity(tableName = "school_profile")
+@Entity(
+    tableName = "school_profile",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class SchoolProfileEntity(
     @PrimaryKey val id: Int = 1,
     val schoolName: String,
@@ -33,10 +37,17 @@ data class SchoolProfileEntity(
     val affiliationNumber: String? = null,
     val updatedAtMillis: Long = System.currentTimeMillis(),
     val profileImageUri: String? = null,
-    val aboutImageUri: String? = null
+    val aboutImageUri: String? = null,
+    val remoteId: String = SyncMetadataDefaults.deterministicRemoteId("school_profile", id.toLong()),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null
 )
 
-@Entity(tableName = "academic_info")
+@Entity(
+    tableName = "academic_info",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class AcademicInfoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
@@ -47,10 +58,18 @@ data class AcademicInfoEntity(
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
-    val updatedAtMillis: Long = System.currentTimeMillis()
+    val updatedAtMillis: Long = System.currentTimeMillis(),
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
-@Entity(tableName = "higher_secondary_courses")
+@Entity(
+    tableName = "higher_secondary_courses",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class HigherSecondaryCourseEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val streamTitle: String,
@@ -63,10 +82,18 @@ data class HigherSecondaryCourseEntity(
     val isVerified: Boolean = false,
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
-    val approvalStatus: String = ApprovalStatus.PENDING
+    val approvalStatus: String = ApprovalStatus.PENDING,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
-@Entity(tableName = "facilities")
+@Entity(
+    tableName = "facilities",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class FacilityEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
@@ -78,10 +105,18 @@ data class FacilityEntity(
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
-    val imageUri: String? = null
+    val imageUri: String? = null,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
-@Entity(tableName = "transport_routes")
+@Entity(
+    tableName = "transport_routes",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class TransportRouteEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val routeNumber: String,
@@ -94,10 +129,18 @@ data class TransportRouteEntity(
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
-    val displayOrder: Int = 0
+    val displayOrder: Int = 0,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
-@Entity(tableName = "news_items")
+@Entity(
+    tableName = "news_items",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class NewsItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
@@ -111,10 +154,18 @@ data class NewsItemEntity(
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
     val imageUri: String? = null,
-    val displayOrder: Int = 0
+    val displayOrder: Int = 0,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
-@Entity(tableName = "announcements")
+@Entity(
+    tableName = "announcements",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class AnnouncementEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
@@ -127,5 +178,10 @@ data class AnnouncementEntity(
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
     val imageUri: String? = null,
-    val displayOrder: Int = 0
+    val displayOrder: Int = 0,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )

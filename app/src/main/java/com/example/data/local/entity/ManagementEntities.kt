@@ -26,6 +26,8 @@ enum class ManagementSection(val key: String, val supportsPublish: Boolean = tru
     PHOTO_GALLERY("PHOTO_GALLERY", supportsPublish = true),
     CONTACT_DETAILS("CONTACT_DETAILS", supportsPublish = false),
     SOCIAL_MEDIA("SOCIAL_MEDIA", supportsPublish = true),
+    SCHOOL_POSTS("SCHOOL_POSTS", supportsPublish = true),
+    SCHOOL_HIGHLIGHTS("SCHOOL_HIGHLIGHTS", supportsPublish = true),
     MEDIA_STUDIO("MEDIA_STUDIO", supportsPublish = true),
     STAFF_MANAGEMENT("STAFF_MANAGEMENT", supportsPublish = false),
     NOTIFICATIONS("NOTIFICATIONS", supportsPublish = false),
@@ -116,7 +118,8 @@ data class AccountWithPermissions(
     indices = [
         Index(value = ["sectionKey"]),
         Index(value = ["status"]),
-        Index(value = ["submittedByAccountId"])
+        Index(value = ["submittedByAccountId"]),
+        Index(value = ["remoteId"], unique = true)
     ]
 )
 data class ContentApprovalEntity(
@@ -134,12 +137,20 @@ data class ContentApprovalEntity(
     val reviewedByAccountId: Long? = null,
     val reviewedByName: String? = null,
     val reviewedAtMillis: Long? = null,
-    val rejectionReason: String? = null
+    val rejectionReason: String? = null,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
 @Entity(
     tableName = "version_history",
-    indices = [Index(value = ["sectionKey", "recordId"])]
+    indices = [
+        Index(value = ["sectionKey", "recordId"]),
+        Index(value = ["remoteId"], unique = true)
+    ]
 )
 data class VersionHistoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -153,12 +164,20 @@ data class VersionHistoryEntity(
     val changedByName: String,
     val changedAtMillis: Long = System.currentTimeMillis(),
     val changeSummary: String,
-    val approvalStatus: String
+    val approvalStatus: String,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null
 )
 
 @Entity(
     tableName = "media_studio_items",
-    indices = [Index(value = ["mediaKind"]), Index(value = ["approvalStatus"])]
+    indices = [
+        Index(value = ["mediaKind"]),
+        Index(value = ["approvalStatus"]),
+        Index(value = ["remoteId"], unique = true)
+    ]
 )
 data class MediaStudioItemEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -178,7 +197,12 @@ data class MediaStudioItemEntity(
     val displayOrder: Int = 0,
     val approvalStatus: String = ContentWorkflowStatus.PUBLISHED,
     val createdByName: String,
-    val createdAtMillis: Long = System.currentTimeMillis()
+    val createdAtMillis: Long = System.currentTimeMillis(),
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
 @Entity(
@@ -186,7 +210,8 @@ data class MediaStudioItemEntity(
     indices = [
         Index(value = ["timestampMillis"]),
         Index(value = ["actorAccountId"]),
-        Index(value = ["sectionKey"])
+        Index(value = ["sectionKey"]),
+        Index(value = ["remoteId"], unique = true)
     ]
 )
 data class ActivityLogEntity(
@@ -198,7 +223,11 @@ data class ActivityLogEntity(
     val sectionKey: String,
     val recordRef: String,
     val details: String,
-    val timestampMillis: Long = System.currentTimeMillis()
+    val timestampMillis: Long = System.currentTimeMillis(),
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null
 )
 
 @Entity(

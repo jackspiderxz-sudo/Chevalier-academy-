@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Apartment
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.FamilyRestroom
@@ -89,14 +90,23 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.R
+import com.example.core.config.Version2FeatureConfig
 import com.example.core.i18n.LocalAppStrings
 import com.example.core.model.AppLanguage
 import com.example.core.model.AppThemeMode
 import com.example.data.local.entity.SchoolProfileEntity
+import com.example.data.v2.AcademicsV2Category
 import com.example.ui.components.ChevalierTopBar
+import com.example.ui.components.Version2UnavailableNoticeScreen
 import com.example.ui.screens.AboutSchoolScreen
 import com.example.ui.screens.AcademicsScreen
+import com.example.ui.screens.AcademicsV2CategoryDetailScreen
+import com.example.ui.screens.AcademicsV2PublicHubScreen
+import com.example.ui.screens.AcademyCategoryDetailScreen
+import com.example.ui.screens.AcademyPageScreen
+import com.example.ui.screens.AcademyTopHeader
 import com.example.ui.screens.AnnouncementsScreen
+import com.example.ui.screens.BookmarksScreen
 import com.example.ui.screens.ContactScreen
 import com.example.ui.screens.FacilitiesScreen
 import com.example.ui.screens.GalleryScreen
@@ -110,6 +120,7 @@ import com.example.ui.screens.ParentDashboardScreen
 import com.example.ui.screens.ParentModuleDetailScreen
 import com.example.ui.screens.ParentModuleId
 import com.example.ui.screens.ParentPortalTopBar
+import com.example.ui.screens.PublicFacultyProfileDetailScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.SocialMediaScreen
 import com.example.ui.screens.SplashScreen
@@ -118,6 +129,7 @@ import com.example.ui.screens.parentModuleTitle
 import com.example.ui.screens.management.ManagementPortalScreen
 import com.example.ui.theme.LocalBrandPalette
 import com.example.ui.viewmodel.MainViewModel
+import com.example.ui.viewmodel.ManagementAuthUiState
 import com.example.ui.viewmodel.ManagementViewModel
 import com.example.ui.viewmodel.PreferencesUiState
 import com.example.ui.viewmodel.SchoolDataViewModel
@@ -157,6 +169,9 @@ fun ChevalierAppShell(
     val coroutineScope = rememberCoroutineScope()
     var parentSearchActive by rememberSaveable { mutableStateOf(false) }
     var parentSearchQuery by rememberSaveable { mutableStateOf("") }
+    var academySearchActive by rememberSaveable { mutableStateOf(false) }
+    var academySearchQuery by rememberSaveable { mutableStateOf("") }
+    var showAcademyHeroEditorDialog by rememberSaveable { mutableStateOf(false) }
 
     val isDarkTheme = when (currentThemeMode) {
         AppThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -172,6 +187,7 @@ fun ChevalierAppShell(
     val schoolProfile by schoolDataViewModel.schoolProfile.collectAsStateWithLifecycle()
     val preferencesUiState by mainViewModel.preferencesUiState.collectAsStateWithLifecycle()
     val campusHeroPhotos by schoolDataViewModel.campusHeroPhotos.collectAsStateWithLifecycle()
+    val academyHeroBanner by schoolDataViewModel.academyHeroBanner.collectAsStateWithLifecycle()
     val academicInfo by schoolDataViewModel.academicInfo.collectAsStateWithLifecycle()
     val courses by schoolDataViewModel.higherSecondaryCourses.collectAsStateWithLifecycle()
     val facilities by schoolDataViewModel.facilities.collectAsStateWithLifecycle()
@@ -181,9 +197,25 @@ fun ChevalierAppShell(
     val galleryAlbums by schoolDataViewModel.galleryAlbums.collectAsStateWithLifecycle()
     val galleryMedia by schoolDataViewModel.galleryMedia.collectAsStateWithLifecycle()
     val socialLinks by schoolDataViewModel.socialMediaLinks.collectAsStateWithLifecycle()
+    val allPublishedSchoolPosts by schoolDataViewModel.allPublishedSchoolPosts.collectAsStateWithLifecycle()
+    val publishedSchoolPosts by schoolDataViewModel.publishedSchoolPosts.collectAsStateWithLifecycle()
+    val publishedAcademyFeedPosts by schoolDataViewModel.publishedAcademyFeedPosts.collectAsStateWithLifecycle()
+    val publishedSchoolHighlights by schoolDataViewModel.publishedSchoolHighlights.collectAsStateWithLifecycle()
+    val managementAuthState by managementViewModel.authUiState.collectAsStateWithLifecycle()
+    val managementBusy by managementViewModel.isBusy.collectAsStateWithLifecycle()
+    val readyPreferences = (preferencesUiState as? PreferencesUiState.Ready)?.state
+    val likedPostIds = readyPreferences?.likedPostIds ?: emptySet()
+    val likedPostRemoteIds = readyPreferences?.likedPostRemoteIds ?: emptySet()
+    val bookmarkedPostIds = readyPreferences?.bookmarkedPostIds ?: emptySet()
+    val bookmarkedPostRemoteIds = readyPreferences?.bookmarkedPostRemoteIds ?: emptySet()
+    val canEditAcademyHeroBanner = managementAuthState is ManagementAuthUiState.Authenticated &&
+        managementViewModel.canEditAcademyHeroBanner()
 
+    val isVersion2AcademicsEnabled by Version2FeatureConfig.isVersion2AcademicsEnabledFlow.collectAsStateWithLifecycle()
     val showShellChrome = currentRoute !in AppRoute.hiddenChromeRoutes
     val isPrimaryTab = currentRoute in AppRoute.primaryTabRoutes
+    val useAcademyHeader = (currentRoute == AppRoute.ACADEMICS && !isVersion2AcademicsEnabled) ||
+        currentRoute == AppRoute.ACADEMY_CATEGORY
 
     val topLevelItems = listOf(
         TopLevelNavItem(
@@ -194,18 +226,18 @@ fun ChevalierAppShell(
             testTag = "bottom_nav_home"
         ),
         TopLevelNavItem(
-            route = AppRoute.PARENT,
-            label = strings.navParent,
-            selectedIcon = Icons.Filled.FamilyRestroom,
-            unselectedIcon = Icons.Outlined.FamilyRestroom,
-            testTag = "bottom_nav_parent"
-        ),
-        TopLevelNavItem(
             route = AppRoute.ACADEMICS,
             label = strings.navAcademics,
             selectedIcon = Icons.Filled.School,
             unselectedIcon = Icons.Outlined.School,
             testTag = "bottom_nav_academics"
+        ),
+        TopLevelNavItem(
+            route = AppRoute.PARENT,
+            label = strings.navParent,
+            selectedIcon = Icons.Filled.FamilyRestroom,
+            unselectedIcon = Icons.Outlined.FamilyRestroom,
+            testTag = "bottom_nav_parent"
         ),
         TopLevelNavItem(
             route = AppRoute.CONTACT,
@@ -254,6 +286,11 @@ fun ChevalierAppShell(
             strings
         )
         AppRoute.ACADEMICS -> strings.titleAcademics
+        AppRoute.ACADEMICS_V2_CATEGORY -> AcademicsV2Category.fromRouteId(
+            backStackEntry?.arguments?.getString("categoryId")
+        )?.title ?: strings.titleAcademics
+        AppRoute.FACULTY_V2_PROFILE -> "Faculty & Staff"
+        AppRoute.ACADEMICS_DETAILS -> strings.titleAcademics
         AppRoute.GALLERY -> strings.titleGallery
         AppRoute.CONTACT -> strings.titleContact
         AppRoute.MORE -> strings.titleMore
@@ -265,6 +302,7 @@ fun ChevalierAppShell(
         AppRoute.ANNOUNCEMENTS -> strings.titleAnnouncements
         AppRoute.NEWS_ANNOUNCEMENTS -> strings.titleNewsAnnouncements
         AppRoute.SOCIAL_MEDIA -> strings.titleSocialMedia
+        AppRoute.BOOKMARKS -> strings.titleBookmarks
         AppRoute.SETTINGS -> strings.titleSettings
         AppRoute.MANAGEMENT_ENTRY -> strings.titleManagementEntry
         else -> strings.shortSchoolName
@@ -337,11 +375,62 @@ fun ChevalierAppShell(
                                     onGalleryClick = {
                                         navigateToRoute(AppRoute.GALLERY)
                                     },
+                                    onBookmarksClick = {
+                                        navigateToRoute(AppRoute.BOOKMARKS)
+                                    },
                                     onOpenDrawerClick = {
                                         coroutineScope.launch { drawerState.open() }
                                     },
                                     onSettingsClick = {
                                         navigateToRoute(AppRoute.SETTINGS)
+                                    }
+                                )
+                            } else if (useAcademyHeader) {
+                                AcademyTopHeader(
+                                    isSearchActive = academySearchActive && currentRoute == AppRoute.ACADEMICS,
+                                    hasNotifications = announcements.isNotEmpty(),
+                                    canEditHeroBanner = canEditAcademyHeroBanner && currentRoute == AppRoute.ACADEMICS,
+                                    onBackClick = {
+                                        if (navController.previousBackStackEntry != null) {
+                                            navController.popBackStack()
+                                        } else {
+                                            navigateToRoute(AppRoute.HOME)
+                                        }
+                                    },
+                                    onToggleSearch = {
+                                        if (currentRoute != AppRoute.ACADEMICS) {
+                                            academySearchActive = true
+                                            if (navController.previousBackStackEntry != null) {
+                                                navController.popBackStack()
+                                            } else {
+                                                navigateToRoute(AppRoute.ACADEMICS)
+                                            }
+                                        } else {
+                                            academySearchActive = !academySearchActive
+                                            if (!academySearchActive) {
+                                                academySearchQuery = ""
+                                            }
+                                        }
+                                    },
+                                    onNotificationsClick = {
+                                        navigateToRoute(AppRoute.ANNOUNCEMENTS)
+                                    },
+                                    onGalleryClick = {
+                                        navigateToRoute(AppRoute.GALLERY)
+                                    },
+                                    onBookmarksClick = {
+                                        navigateToRoute(AppRoute.BOOKMARKS)
+                                    },
+                                    onOpenDrawerClick = {
+                                        coroutineScope.launch { drawerState.open() }
+                                    },
+                                    onSettingsClick = {
+                                        navigateToRoute(AppRoute.SETTINGS)
+                                    },
+                                    onEditHeroBannerClick = if (canEditAcademyHeroBanner) {
+                                        { showAcademyHeroEditorDialog = true }
+                                    } else {
+                                        null
                                     }
                                 )
                             } else {
@@ -362,6 +451,11 @@ fun ChevalierAppShell(
                                         if (currentRoute != AppRoute.GALLERY) {
                                             navigateToRoute(AppRoute.GALLERY)
                                         }
+                                    },
+                                    onBookmarksClick = {
+                                        if (currentRoute != AppRoute.BOOKMARKS) {
+                                            navigateToRoute(AppRoute.BOOKMARKS)
+                                        }
                                     }
                                 )
                             }
@@ -370,40 +464,11 @@ fun ChevalierAppShell(
                     bottomBar = {
                         // Fixed bottom navigation remains visible across ALL public pages
                         if (showShellChrome && !useNavigationRail) {
-                            NavigationBar(
-                                containerColor = bottomBarContainerColor,
-                                tonalElevation = 3.dp,
-                                modifier = Modifier.testTag("public_bottom_navigation_bar")
-                            ) {
-                                topLevelItems.forEach { item ->
-                                    val selected = currentRoute == item.route
-                                    NavigationBarItem(
-                                        selected = selected,
-                                        onClick = { navigateToRoute(item.route) },
-                                        icon = {
-                                            Icon(
-                                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                                contentDescription = item.label
-                                            )
-                                        },
-                                        label = {
-                                            Text(
-                                                text = item.label,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color.White,
-                                            selectedTextColor = brand.burgundy,
-                                            indicatorColor = brand.burgundy,
-                                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                        ),
-                                        modifier = Modifier.testTag(item.testTag)
-                                    )
-                                }
-                            }
+                            ChevalierPublicBottomBar(
+                                selectedRoute = currentRoute,
+                                currentThemeMode = currentThemeMode,
+                                onSelectRoute = { route -> navigateToRoute(route) }
+                            )
                         }
                     }
                 ) { innerPadding ->
@@ -440,8 +505,10 @@ fun ChevalierAppShell(
                         }
 
                         composable(AppRoute.LANGUAGE_SELECTION) {
+                            val previousRoute = navController.previousBackStackEntry?.destination?.route
                             val openedFromSettings =
-                                navController.previousBackStackEntry?.destination?.route == AppRoute.SETTINGS
+                                previousRoute == AppRoute.SETTINGS ||
+                                    previousRoute == AppRoute.MANAGEMENT_ENTRY
                             LanguageSelectionScreen(
                                 selectedLanguage = currentLanguage,
                                 onLanguagePreviewSelected = { lang ->
@@ -468,22 +535,25 @@ fun ChevalierAppShell(
                                 announcements = announcements,
                                 galleryMedia = galleryMedia,
                                 socialLinks = socialLinks,
+                                publishedPosts = publishedSchoolPosts,
+                                publishedHighlights = publishedSchoolHighlights,
+                                likedPostIds = likedPostIds,
+                                bookmarkedPostIds = bookmarkedPostIds,
+                                onToggleLike = { postId -> mainViewModel.togglePostLike(postId) },
+                                onToggleBookmark = { postId -> mainViewModel.togglePostBookmark(postId) },
                                 onNavigate = { target -> navigateToRoute(target) }
                             )
                         }
 
                         composable(AppRoute.PARENT) {
                             ParentDashboardScreen(
-                                announcements = announcements,
-                                newsItems = newsItems,
+                                schoolProfile = schoolProfile,
+                                publishedPosts = publishedSchoolPosts,
                                 isSearchActive = parentSearchActive,
                                 searchQuery = parentSearchQuery,
                                 onSearchQueryChange = { parentSearchQuery = it },
                                 onOpenModule = { moduleId ->
                                     navigateToRoute(AppRoute.parentModule(moduleId.routeKey))
-                                },
-                                onOpenAllUpdates = {
-                                    navigateToRoute(AppRoute.NEWS_ANNOUNCEMENTS)
                                 }
                             )
                         }
@@ -510,6 +580,134 @@ fun ChevalierAppShell(
                         }
 
                         composable(AppRoute.ACADEMICS) {
+                            if (isVersion2AcademicsEnabled) {
+                                AcademicsV2PublicHubScreen(
+                                    schoolDataViewModel = schoolDataViewModel,
+                                    onOpenCategory = { category ->
+                                        navigateToRoute(AppRoute.academicsV2Category(category.routeId))
+                                    }
+                                )
+                            } else {
+                                AcademyPageScreen(
+                                    heroBannerConfig = academyHeroBanner,
+                                    academyFeedPosts = publishedAcademyFeedPosts,
+                                    likedPostIds = likedPostIds,
+                                    likedPostRemoteIds = likedPostRemoteIds,
+                                    bookmarkedPostIds = bookmarkedPostIds,
+                                    bookmarkedPostRemoteIds = bookmarkedPostRemoteIds,
+                                    isSearchActive = academySearchActive,
+                                    searchQuery = academySearchQuery,
+                                    canEditHeroBanner = canEditAcademyHeroBanner,
+                                    isHeroEditorBusy = managementBusy,
+                                    showHeroEditorDialog = showAcademyHeroEditorDialog,
+                                    onSearchQueryChange = { academySearchQuery = it },
+                                    onOpenHeroEditor = { showAcademyHeroEditorDialog = true },
+                                    onDismissHeroEditor = { showAcademyHeroEditorDialog = false },
+                                    onPickHeroBannerImage = { uri, onImported ->
+                                        managementViewModel.importAcademyHeroImage(uri, onImported)
+                                    },
+                                    onPublishHeroBanner = { imageUri, title, subtitle, publishNow ->
+                                        managementViewModel.saveAcademyHeroBanner(
+                                            imageUri = imageUri,
+                                            overlayTitle = title,
+                                            overlaySubtitle = subtitle,
+                                            publishNow = publishNow,
+                                            onSaved = { showAcademyHeroEditorDialog = false }
+                                        )
+                                    },
+                                    onOpenCategory = { category ->
+                                        navigateToRoute(AppRoute.academyCategory(category.routeId))
+                                    },
+                                    onToggleLike = { postId, remoteId ->
+                                        mainViewModel.togglePostLike(postId, remoteId)
+                                    },
+                                    onToggleBookmark = { postId, remoteId ->
+                                        mainViewModel.togglePostBookmark(postId, remoteId)
+                                    }
+                                )
+                            }
+                        }
+
+                        composable(
+                            route = AppRoute.ACADEMY_CATEGORY,
+                            arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
+                        ) { entry ->
+                            val category = AcademicsV2Category.fromRouteId(entry.arguments?.getString("categoryId"))
+                                ?: AcademicsV2Category.ACADEMICS
+                            AcademyCategoryDetailScreen(
+                                category = category,
+                                schoolDataViewModel = schoolDataViewModel
+                            )
+                        }
+
+                        composable(
+                            route = AppRoute.ACADEMICS_V2_CATEGORY,
+                            arguments = listOf(navArgument("categoryId") { type = NavType.StringType })
+                        ) { entry ->
+                            val category = AcademicsV2Category.fromRouteId(entry.arguments?.getString("categoryId"))
+                            if (!isVersion2AcademicsEnabled || category == null) {
+                                Version2UnavailableNoticeScreen(
+                                    language = currentLanguage,
+                                    title = category?.title ?: strings.titleAcademics,
+                                    onBack = {
+                                        if (navController.previousBackStackEntry != null) {
+                                            navController.popBackStack()
+                                        } else {
+                                            navigateToRoute(AppRoute.ACADEMICS)
+                                        }
+                                    }
+                                )
+                            } else {
+                                AcademicsV2CategoryDetailScreen(
+                                    category = category,
+                                    schoolDataViewModel = schoolDataViewModel,
+                                    onBack = {
+                                        if (navController.previousBackStackEntry != null) {
+                                            navController.popBackStack()
+                                        } else {
+                                            navigateToRoute(AppRoute.ACADEMICS)
+                                        }
+                                    },
+                                    onOpenFacultyProfile = { profileId ->
+                                        navigateToRoute(AppRoute.facultyV2Profile(profileId))
+                                    }
+                                )
+                            }
+                        }
+
+                        composable(
+                            route = AppRoute.FACULTY_V2_PROFILE,
+                            arguments = listOf(navArgument("profileId") { type = NavType.StringType })
+                        ) { entry ->
+                            val profileId = entry.arguments?.getString("profileId").orEmpty()
+                            if (!isVersion2AcademicsEnabled) {
+                                Version2UnavailableNoticeScreen(
+                                    language = currentLanguage,
+                                    title = "Faculty & Staff",
+                                    onBack = {
+                                        if (navController.previousBackStackEntry != null) {
+                                            navController.popBackStack()
+                                        } else {
+                                            navigateToRoute(AppRoute.ACADEMICS)
+                                        }
+                                    }
+                                )
+                            } else {
+                                PublicFacultyProfileDetailScreen(
+                                    profileId = profileId,
+                                    schoolDataViewModel = schoolDataViewModel,
+                                    onBack = {
+                                        if (navController.previousBackStackEntry != null) {
+                                            navController.popBackStack()
+                                        } else {
+                                            navigateToRoute(AppRoute.ACADEMICS)
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        composable(AppRoute.ACADEMICS_DETAILS) {
                             AcademicsScreen(
                                 academicInfo = academicInfo,
                                 onOpenCourses = { navigateToRoute(AppRoute.COURSES) }
@@ -569,6 +767,18 @@ fun ChevalierAppShell(
                             SocialMediaScreen(links = socialLinks)
                         }
 
+                        composable(AppRoute.BOOKMARKS) {
+                            BookmarksScreen(
+                                profile = schoolProfile,
+                                publishedPosts = allPublishedSchoolPosts,
+                                likedPostIds = likedPostIds,
+                                bookmarkedPostIds = bookmarkedPostIds,
+                                onToggleLike = { postId -> mainViewModel.togglePostLike(postId) },
+                                onToggleBookmark = { postId -> mainViewModel.togglePostBookmark(postId) },
+                                onExploreFeed = { navigateToRoute(AppRoute.HOME) }
+                            )
+                        }
+
                         composable(AppRoute.SETTINGS) {
                             SettingsScreen(
                                 currentLanguage = currentLanguage,
@@ -589,18 +799,113 @@ fun ChevalierAppShell(
                             ManagementPortalScreen(
                                 managementViewModel = managementViewModel,
                                 mainViewModel = mainViewModel,
+                                schoolDataViewModel = schoolDataViewModel,
                                 currentLanguage = currentLanguage,
                                 currentThemeMode = currentThemeMode,
                                 onExitToPublicApp = {
                                     if (navController.previousBackStackEntry != null) {
                                         navController.popBackStack()
+                                    } else {
+                                        navigateToRoute(AppRoute.HOME)
                                     }
+                                },
+                                onOpenLanguageSelection = {
+                                    navController.navigate(AppRoute.LANGUAGE_SELECTION)
+                                },
+                                onSelectPublicTab = { route ->
+                                    navigateToRoute(route)
                                 }
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ChevalierPublicBottomBar(
+    selectedRoute: String?,
+    currentThemeMode: AppThemeMode,
+    onSelectRoute: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val strings = LocalAppStrings.current
+    val brand = LocalBrandPalette.current
+    val isDarkTheme = when (currentThemeMode) {
+        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    }
+    val bottomBarContainerColor = if (isDarkTheme) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        brand.warmIvory
+    }
+    val topLevelItems = listOf(
+        TopLevelNavItem(
+            route = AppRoute.HOME,
+            label = strings.navHome,
+            selectedIcon = Icons.Filled.Home,
+            unselectedIcon = Icons.Outlined.Home,
+            testTag = "bottom_nav_home"
+        ),
+        TopLevelNavItem(
+            route = AppRoute.ACADEMICS,
+            label = strings.navAcademics,
+            selectedIcon = Icons.Filled.School,
+            unselectedIcon = Icons.Outlined.School,
+            testTag = "bottom_nav_academics"
+        ),
+        TopLevelNavItem(
+            route = AppRoute.PARENT,
+            label = strings.navParent,
+            selectedIcon = Icons.Filled.FamilyRestroom,
+            unselectedIcon = Icons.Outlined.FamilyRestroom,
+            testTag = "bottom_nav_parent"
+        ),
+        TopLevelNavItem(
+            route = AppRoute.CONTACT,
+            label = strings.navContact,
+            selectedIcon = Icons.Filled.Phone,
+            unselectedIcon = Icons.Outlined.Phone,
+            testTag = "bottom_nav_contact"
+        )
+    )
+
+    NavigationBar(
+        containerColor = bottomBarContainerColor,
+        tonalElevation = 3.dp,
+        modifier = modifier.testTag("public_bottom_navigation_bar")
+    ) {
+        topLevelItems.forEach { item ->
+            val selected = selectedRoute == item.route
+            NavigationBarItem(
+                selected = selected,
+                onClick = { onSelectRoute(item.route) },
+                icon = {
+                    Icon(
+                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = item.label
+                    )
+                },
+                label = {
+                    Text(
+                        text = item.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color.White,
+                    selectedTextColor = brand.burgundy,
+                    indicatorColor = brand.burgundy,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.testTag(item.testTag)
+            )
         }
     }
 }
@@ -679,7 +984,8 @@ private fun ChevalierDrawerContent(
                 groupTitle = strings.drawerGroupMain,
                 items = listOf(
                     DrawerNavItem(AppRoute.HOME, strings.navHome, Icons.Outlined.Home, "drawer_home"),
-                    DrawerNavItem(AppRoute.PARENT, strings.navParent, Icons.Outlined.FamilyRestroom, "drawer_parent")
+                    DrawerNavItem(AppRoute.PARENT, strings.navParent, Icons.Outlined.FamilyRestroom, "drawer_parent"),
+                    DrawerNavItem(AppRoute.BOOKMARKS, strings.titleBookmarks, Icons.Outlined.BookmarkBorder, "drawer_bookmarks")
                 ),
                 currentRoute = currentRoute,
                 onSelectRoute = onSelectRoute
@@ -690,7 +996,7 @@ private fun ChevalierDrawerContent(
                 groupTitle = strings.drawerGroupSchoolInfo,
                 items = listOf(
                     DrawerNavItem(AppRoute.ABOUT, strings.titleAboutSchool, Icons.Outlined.Info, "drawer_about"),
-                    DrawerNavItem(AppRoute.ACADEMICS, strings.titleAcademics, Icons.Outlined.School, "drawer_academics"),
+                    DrawerNavItem(AppRoute.ACADEMICS_DETAILS, strings.titleAcademics, Icons.Outlined.School, "drawer_academics"),
                     DrawerNavItem(AppRoute.COURSES, strings.titleHigherSecondaryCourses, Icons.AutoMirrored.Outlined.MenuBook, "drawer_courses")
                 ),
                 currentRoute = currentRoute,

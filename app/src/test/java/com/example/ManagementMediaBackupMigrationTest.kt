@@ -375,7 +375,7 @@ class ManagementMediaBackupMigrationTest {
 
         // Preview succeeds with accurate counts
         val preview = backupManager.inspectEncryptedBackup(encryptedBytes, "StrongPass123").getOrThrow()
-        assertEquals(4, preview.schemaVersion)
+        assertEquals(BackupRestoreManager.CURRENT_SCHEMA_VERSION, preview.schemaVersion)
         assertEquals(1, preview.accountCount)
         assertEquals(1, preview.mediaStudioCount)
         assertTrue(preview.mediaFileCount >= 1)
@@ -526,7 +526,13 @@ class ManagementMediaBackupMigrationTest {
                     String(value, Charsets.UTF_8).replace(currentRootPrefix, foreignPrefix).toByteArray(Charsets.UTF_8)
                 else -> value
             }
-        }
+        }.toMutableMap()
+        val rewrittenDigest = java.security.MessageDigest.getInstance("SHA-256")
+            .digest(rewrittenEntries["database_snapshot.json"]!!)
+            .joinToString("") { "%02x".format(it) }
+        val updatedManifest = JSONObject(String(rewrittenEntries["manifest.json"]!!, Charsets.UTF_8))
+            .put("snapshotSha256", rewrittenDigest)
+        rewrittenEntries["manifest.json"] = updatedManifest.toString().toByteArray(Charsets.UTF_8)
         val foreignEncrypted = encryptBackupZipEntriesForTest(rewrittenEntries, "PassV4!")
 
         // Wipe local DB and media before restoring
@@ -538,7 +544,7 @@ class ManagementMediaBackupMigrationTest {
             password = "PassV4!",
             actorName = master.account.displayName
         ).getOrThrow()
-        assertEquals(4, restoredPreview.schemaVersion)
+        assertEquals(BackupRestoreManager.CURRENT_SCHEMA_VERSION, restoredPreview.schemaVersion)
 
         val restoredProfile = database.schoolProfileDao().getProfileOnce()!!
         val restoredFacility = database.facilityDao().observeAll().first().single()
@@ -621,13 +627,25 @@ class ManagementMediaBackupMigrationTest {
         snapshotJson.optJSONArray("transportRoutes").stripKey("displayOrder")
         snapshotJson.optJSONArray("galleryAlbums").stripKey("displayOrder")
 
-        for (legacySchema in listOf(1, 2, 3)) {
+        snapshotJson.remove("schoolPosts")
+        snapshotJson.remove("schoolHighlights")
+
+        for (legacySchema in listOf(1, 2, 3, 4, 5)) {
+            val snapshotStr = snapshotJson.toString()
+            val snapshotDigest = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(snapshotStr.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
             val manifestJson = JSONObject(String(baseEntries["manifest.json"]!!, Charsets.UTF_8)).apply {
                 put("schemaVersion", legacySchema)
+                if (legacySchema >= 5) {
+                    put("snapshotSha256", snapshotDigest)
+                } else {
+                    remove("snapshotSha256")
+                }
             }
             val legacyEntries = LinkedHashMap(baseEntries).apply {
                 put("manifest.json", manifestJson.toString().toByteArray(Charsets.UTF_8))
-                put("database_snapshot.json", snapshotJson.toString().toByteArray(Charsets.UTF_8))
+                put("database_snapshot.json", snapshotStr.toByteArray(Charsets.UTF_8))
             }
             val legacyBytes = encryptBackupZipEntriesForTest(legacyEntries, "LegacyPass9")
 
@@ -716,9 +734,14 @@ class ManagementMediaBackupMigrationTest {
         )
         v2Db.close()
 
-        // Open with Room v4 using MIGRATION_2_3 + MIGRATION_3_4 (no destructive migration!)
+        // Open with Room v6 using MIGRATION_2_3 + MIGRATION_3_4 + MIGRATION_4_5 + MIGRATION_5_6 (no destructive migration!)
         val migratedDb = Room.databaseBuilder(context, ChevalierDatabase::class.java, dbName)
-            .addMigrations(ChevalierDatabase.MIGRATION_2_3, ChevalierDatabase.MIGRATION_3_4)
+            .addMigrations(
+                ChevalierDatabase.MIGRATION_2_3,
+                ChevalierDatabase.MIGRATION_3_4,
+                ChevalierDatabase.MIGRATION_4_5,
+                ChevalierDatabase.MIGRATION_5_6
+            )
             .allowMainThreadQueries()
             .build()
 
@@ -851,9 +874,14 @@ class ManagementMediaBackupMigrationTest {
         )
         v3Db.close()
 
-        // Open with Room v4 using MIGRATION_3_4
+        // Open with Room v6 using MIGRATION_3_4 + MIGRATION_4_5 + MIGRATION_5_6
         val migratedDb = Room.databaseBuilder(context, ChevalierDatabase::class.java, dbName)
-            .addMigrations(ChevalierDatabase.MIGRATION_2_3, ChevalierDatabase.MIGRATION_3_4)
+            .addMigrations(
+                ChevalierDatabase.MIGRATION_2_3,
+                ChevalierDatabase.MIGRATION_3_4,
+                ChevalierDatabase.MIGRATION_4_5,
+                ChevalierDatabase.MIGRATION_5_6
+            )
             .allowMainThreadQueries()
             .build()
 

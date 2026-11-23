@@ -7,13 +7,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -28,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.Campaign
@@ -90,9 +94,12 @@ import com.example.data.local.entity.CampusHeroPhotoEntity
 import com.example.data.local.entity.GalleryAlbumWithMedia
 import com.example.data.local.entity.GalleryMediaEntity
 import com.example.data.local.entity.NewsItemEntity
+import com.example.data.local.entity.SchoolHighlightEntity
+import com.example.data.local.entity.SchoolPostEntity
 import com.example.data.local.entity.SchoolProfileEntity
 import com.example.data.local.entity.SocialMediaLinkEntity
 import com.example.data.media.MediaStudioManager
+import com.example.data.media.YouTubeMediaHelper
 import com.example.ui.components.AnnouncementDetailDialog
 import com.example.ui.components.AwaitingVerificationCard
 import com.example.ui.components.GalleryMediaTileContent
@@ -118,285 +125,37 @@ import kotlinx.coroutines.withContext
 fun HomeScreen(
     profile: SchoolProfileEntity,
     heroPhotos: List<CampusHeroPhotoEntity>,
-    newsItems: List<NewsItemEntity>,
-    announcements: List<AnnouncementEntity>,
-    galleryMedia: List<GalleryMediaEntity>,
-    socialLinks: List<SocialMediaLinkEntity>,
-    onNavigate: (String) -> Unit
+    newsItems: List<NewsItemEntity> = emptyList(),
+    announcements: List<AnnouncementEntity> = emptyList(),
+    galleryMedia: List<GalleryMediaEntity> = emptyList(),
+    socialLinks: List<SocialMediaLinkEntity> = emptyList(),
+    publishedPosts: List<SchoolPostEntity> = emptyList(),
+    publishedHighlights: List<SchoolHighlightEntity> = emptyList(),
+    likedPostIds: Set<Long> = emptySet(),
+    bookmarkedPostIds: Set<Long> = emptySet(),
+    onToggleLike: (Long) -> Unit = {},
+    onToggleBookmark: (Long) -> Unit = {},
+    onNavigate: (String) -> Unit,
+    nowMillisProvider: () -> Long = { System.currentTimeMillis() },
+    onOpenExternalYouTube: ((String) -> Unit)? = null
 ) {
-    val strings = LocalAppStrings.current
-    val brand = LocalBrandPalette.current
-    val context = LocalContext.current
-
-    var selectedNews by remember { mutableStateOf<NewsItemEntity?>(null) }
-    var selectedAnnouncement by remember { mutableStateOf<AnnouncementEntity?>(null) }
-    var lightboxStartIndex by remember { mutableStateOf<Int?>(null) }
-
-    selectedNews?.let { item ->
-        NewsDetailDialog(newsItem = item, onDismiss = { selectedNews = null })
-    }
-    selectedAnnouncement?.let { item ->
-        AnnouncementDetailDialog(announcement = item, onDismiss = { selectedAnnouncement = null })
-    }
-    lightboxStartIndex?.let { idx ->
-        PhotoLightboxDialog(
-            photos = galleryMedia,
-            currentIndex = idx,
-            onIndexChange = { lightboxStartIndex = it },
-            onDismiss = { lightboxStartIndex = null }
-        )
-    }
-
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-        LazyColumn(
-            modifier = Modifier
-                .widthIn(max = 840.dp)
-                .fillMaxSize()
-                .testTag("home_screen_list"),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp)
-        ) {
-            // SECTION 1 — SCHOOL HERO BANNER
-            item {
-                HomeSchoolHeroSection(
-                    profile = profile,
-                    heroPhotos = heroPhotos
-                )
-            }
-
-            // SECTION 2 — WELCOME / ABOUT
-            item {
-                SectionHeaderText(title = strings.welcomeSectionTitle)
-                Spacer(modifier = Modifier.height(10.dp))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("home_section_welcome"),
-                    shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        ManagedPublicImage(
-                            imageUri = profile.profileImageUri,
-                            contentDescription = profile.shortName,
-                            modifier = Modifier
-                                .padding(bottom = 12.dp)
-                                .fillMaxWidth()
-                                .height(160.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .testTag("home_welcome_profile_image")
-                        )
-                        val intro = profile.welcomeIntroduction
-                        if (!intro.isNullOrBlank()) {
-                            Text(
-                                text = intro,
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Surface(
-                                    color = brand.royalGold.copy(alpha = 0.16f),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text(
-                                        text = strings.awaitingVerificationLabel,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = strings.welcomePendingDesc,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedButton(
-                            onClick = { onNavigate(AppRoute.ABOUT) },
-                            modifier = Modifier
-                                .height(48.dp)
-                                .testTag("home_welcome_read_more"),
-                            shape = MaterialTheme.shapes.medium,
-                            border = BorderStroke(1.dp, brand.burgundy)
-                        ) {
-                            Text(text = strings.readMore, color = brand.burgundy)
-                            Spacer(modifier = Modifier.size(6.dp))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = brand.burgundy,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // SECTION 3 — QUICK ACCESS CARDS (Exactly 4: Academics, Courses, Facilities, Transport)
-            item {
-                SectionHeaderText(title = strings.quickAccessTitle)
-                Spacer(modifier = Modifier.height(10.dp))
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.testTag("home_section_quick_access")
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        QuickAccessCard(
-                            title = strings.quickCardAcademicsTitle,
-                            description = strings.quickCardAcademicsDesc,
-                            icon = Icons.Outlined.School,
-                            accentColor = brand.burgundy,
-                            onClick = { onNavigate(AppRoute.ACADEMICS) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("home_quick_academics")
-                        )
-                        QuickAccessCard(
-                            title = strings.quickCardCoursesTitle,
-                            description = strings.quickCardCoursesDesc,
-                            icon = Icons.AutoMirrored.Outlined.MenuBook,
-                            accentColor = brand.forestGreen,
-                            onClick = { onNavigate(AppRoute.COURSES) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("home_quick_courses")
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        QuickAccessCard(
-                            title = strings.quickCardFacilitiesTitle,
-                            description = strings.quickCardFacilitiesDesc,
-                            icon = Icons.Outlined.Apartment,
-                            accentColor = brand.goldAccentText,
-                            onClick = { onNavigate(AppRoute.FACILITIES) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("home_quick_facilities")
-                        )
-                        QuickAccessCard(
-                            title = strings.quickCardTransportTitle,
-                            description = strings.quickCardTransportDesc,
-                            icon = Icons.Outlined.DirectionsBus,
-                            accentColor = brand.burgundy,
-                            onClick = { onNavigate(AppRoute.TRANSPORT) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("home_quick_transport")
-                        )
-                    }
-                }
-            }
-
-            // SECTION 4 — LATEST NEWS & ANNOUNCEMENTS
-            item {
-                SectionHeaderText(
-                    title = strings.latestUpdatesTitle,
-                    actionLabel = strings.viewAll,
-                    onActionClick = { onNavigate(AppRoute.NEWS_ANNOUNCEMENTS) }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.testTag("home_section_updates")
-                ) {
-                    if (newsItems.isEmpty() && announcements.isEmpty()) {
-                        AwaitingVerificationCard(
-                            title = strings.latestUpdatesTitle,
-                            description = strings.announcementsPendingDesc,
-                            icon = Icons.Outlined.Campaign
-                        )
-                    } else {
-                        val featuredNews = newsItems.firstOrNull { it.isFeatured } ?: newsItems.firstOrNull()
-                        if (featuredNews != null) {
-                            FeaturedNewsHomeCard(
-                                item = featuredNews,
-                                onClick = { selectedNews = featuredNews }
-                            )
-                        }
-                        val remainingNews = newsItems.filter { it.id != featuredNews?.id }.take(2)
-                        remainingNews.forEach { item ->
-                            CompactNewsHomeCard(
-                                item = item,
-                                onClick = { selectedNews = item }
-                            )
-                        }
-                        announcements.take(2).forEach { ann ->
-                            CompactAnnouncementHomeCard(
-                                item = ann,
-                                onClick = { selectedAnnouncement = ann }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // SECTION 5 — GALLERY PREVIEW
-            item {
-                SectionHeaderText(
-                    title = strings.galleryPreviewTitle,
-                    actionLabel = strings.viewAll,
-                    onActionClick = { onNavigate(AppRoute.GALLERY) }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Box(modifier = Modifier.testTag("home_section_gallery")) {
-                    if (galleryMedia.isEmpty()) {
-                        AwaitingVerificationCard(
-                            title = strings.galleryPreviewTitle,
-                            description = strings.galleryPendingDesc,
-                            icon = Icons.Outlined.PhotoLibrary
-                        )
-                    } else {
-                        GalleryPreviewSection(
-                            media = galleryMedia,
-                            onPhotoClick = { index -> lightboxStartIndex = index }
-                        )
-                    }
-                }
-            }
-
-            // SECTION 6 — CONTACT & SOCIAL MEDIA
-            item {
-                SectionHeaderText(
-                    title = strings.contactSocialTitle,
-                    actionLabel = strings.viewAll,
-                    onActionClick = { onNavigate(AppRoute.CONTACT) }
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                HomeContactSocialSection(
-                    profile = profile,
-                    socialLinks = socialLinks,
-                    onOpenMaps = {
-                        val query = profile.mapCoordinatesOrQuery ?: profile.addressLine
-                        launchMapsIntent(context, query)
-                    },
-                    onDialPhone = { phone -> launchDialerIntent(context, phone) },
-                    onSendEmail = { email -> launchEmailIntent(context, email) },
-                    onOpenSocial = { url -> launchExternalUrl(context, url) },
-                    onOpenAllSocial = { onNavigate(AppRoute.SOCIAL_MEDIA) }
-                )
-            }
-
-            item { PoweredByJkLabsFooter() }
-        }
-    }
+    HomeSocialFeedScreen(
+        profile = profile,
+        heroPhotos = heroPhotos,
+        publishedPosts = publishedPosts,
+        publishedHighlights = publishedHighlights,
+        likedPostIds = likedPostIds,
+        bookmarkedPostIds = bookmarkedPostIds,
+        onToggleLike = onToggleLike,
+        onToggleBookmark = onToggleBookmark,
+        onNavigate = onNavigate,
+        nowMillisProvider = nowMillisProvider,
+        onOpenExternalYouTube = onOpenExternalYouTube
+    )
 }
 
 @Composable
-private fun HomeSchoolHeroSection(
+internal fun HomeSchoolHeroSection(
     profile: SchoolProfileEntity,
     heroPhotos: List<CampusHeroPhotoEntity>
 ) {
@@ -566,7 +325,7 @@ private fun QuickAccessCard(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -588,7 +347,7 @@ private fun QuickAccessCard(
                 text = title,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
@@ -856,164 +615,124 @@ private fun GalleryPreviewSection(
     }
 }
 
+private data class SchoolSectionGridItem(
+    val route: String,
+    val title: String,
+    val description: String,
+    val icon: ImageVector,
+    val accentColor: Color,
+    val testTag: String
+)
+
 @Composable
-private fun HomeContactSocialSection(
-    profile: SchoolProfileEntity,
-    socialLinks: List<SocialMediaLinkEntity>,
-    onOpenMaps: () -> Unit,
-    onDialPhone: (String) -> Unit,
-    onSendEmail: (String) -> Unit,
-    onOpenSocial: (String) -> Unit,
-    onOpenAllSocial: () -> Unit
+fun AcademicsSectionsHubScreen(
+    onNavigate: (String) -> Unit
 ) {
     val strings = LocalAppStrings.current
     val brand = LocalBrandPalette.current
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag("home_section_contact_social"),
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            VerifiedFieldRow(
-                label = strings.addressLabel,
-                value = profile.addressLine,
-                icon = Icons.Outlined.LocationOn
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            VerifiedFieldRow(
-                label = strings.phoneLabel,
-                value = profile.phone,
-                icon = Icons.Outlined.Phone
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            VerifiedFieldRow(
-                label = strings.emailLabel,
-                value = profile.email,
-                icon = Icons.Outlined.Email
-            )
+    val sections = listOf(
+        SchoolSectionGridItem(
+            route = AppRoute.ACADEMICS_DETAILS,
+            title = strings.titleAcademics,
+            description = strings.quickCardAcademicsDesc,
+            icon = Icons.Outlined.School,
+            accentColor = brand.burgundy,
+            testTag = "academics_card_academics"
+        ),
+        SchoolSectionGridItem(
+            route = AppRoute.COURSES,
+            title = strings.titleHigherSecondaryCourses,
+            description = strings.quickCardCoursesDesc,
+            icon = Icons.AutoMirrored.Outlined.MenuBook,
+            accentColor = brand.forestGreen,
+            testTag = "academics_card_courses"
+        ),
+        SchoolSectionGridItem(
+            route = AppRoute.ABOUT,
+            title = strings.titleAboutSchool,
+            description = strings.subtitleAboutSchool,
+            icon = Icons.Outlined.Info,
+            accentColor = brand.goldAccentText,
+            testTag = "academics_card_about"
+        ),
+        SchoolSectionGridItem(
+            route = AppRoute.FACILITIES,
+            title = strings.titleFacilities,
+            description = strings.quickCardFacilitiesDesc,
+            icon = Icons.Outlined.Apartment,
+            accentColor = brand.burgundy,
+            testTag = "academics_card_facilities"
+        ),
+        SchoolSectionGridItem(
+            route = AppRoute.TRANSPORT,
+            title = strings.titleTransport,
+            description = strings.quickCardTransportDesc,
+            icon = Icons.Outlined.DirectionsBus,
+            accentColor = brand.forestGreen,
+            testTag = "academics_card_transport"
+        ),
+        SchoolSectionGridItem(
+            route = AppRoute.NEWS_ANNOUNCEMENTS,
+            title = strings.titleNewsAnnouncements,
+            description = strings.subtitleNews,
+            icon = Icons.Outlined.Campaign,
+            accentColor = brand.goldAccentText,
+            testTag = "academics_card_news_announcements"
+        ),
+        SchoolSectionGridItem(
+            route = AppRoute.GALLERY,
+            title = strings.titleGallery,
+            description = strings.galleryPreviewTitle,
+            icon = Icons.Outlined.PhotoLibrary,
+            accentColor = brand.burgundy,
+            testTag = "academics_card_gallery"
+        )
+    )
+    val sectionRows = remember(sections) { sections.chunked(2) }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onOpenMaps,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("home_open_maps_button"),
-                    shape = MaterialTheme.shapes.medium,
-                    border = BorderStroke(1.dp, brand.forestGreen)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Map,
-                        contentDescription = strings.openMapsActionLabel,
-                        tint = brand.forestGreen,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(
-                        text = strings.openMapsActionLabel,
-                        color = brand.forestGreen,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                if (!profile.phone.isNullOrBlank()) {
-                    Button(
-                        onClick = { onDialPhone(profile.phone) },
-                        modifier = Modifier
-                            .height(48.dp)
-                            .testTag("home_call_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = brand.burgundy),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Phone,
-                            contentDescription = strings.callActionLabel,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text(strings.callActionLabel)
-                    }
-                }
-            }
-
-            if (!profile.email.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = { onSendEmail(profile.email) },
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier
+                .widthIn(max = 840.dp)
+                .fillMaxSize()
+                .testTag("academics_hub_screen_list"),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(
+                items = sectionRows,
+                key = { row -> row.joinToString("_") { it.route } }
+            ) { rowItems ->
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("home_email_button"),
-                    shape = MaterialTheme.shapes.medium
+                        .height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Email,
-                        contentDescription = strings.emailActionLabel,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(strings.emailActionLabel)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = strings.officialChannelsTitle,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                TextButton(onClick = onOpenAllSocial) {
-                    Text(strings.viewAll)
-                }
-            }
-
-            if (socialLinks.isEmpty()) {
-                Surface(
-                    color = brand.royalGold.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = strings.awaitingVerificationLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
-                }
-            } else {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(socialLinks, key = { it.id }) { link ->
-                        OutlinedButton(
-                            onClick = { onOpenSocial(link.url) },
-                            shape = RoundedCornerShape(50)
-                        ) {
-                            Text(link.platformName)
-                            Spacer(modifier = Modifier.size(4.dp))
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = strings.openLink,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
+                    rowItems.forEach { item ->
+                        QuickAccessCard(
+                            title = item.title,
+                            description = item.description,
+                            icon = item.icon,
+                            accentColor = item.accentColor,
+                            onClick = { onNavigate(item.route) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .heightIn(min = 128.dp)
+                                .testTag(item.testTag)
+                        )
+                    }
+                    if (rowItems.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
                     }
                 }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(6.dp))
+                PoweredByJkLabsFooter()
             }
         }
     }
@@ -1160,30 +879,66 @@ internal fun AcademicInfoItemCard(
 
 @Composable
 fun GalleryScreen(
-    albums: List<GalleryAlbumWithMedia>
+    albums: List<GalleryAlbumWithMedia>,
+    onOpenExternalYouTube: ((String) -> Unit)? = null,
+    youtubeLifecycleHooks: YouTubePlayerLifecycleHooks? = null
 ) {
     val strings = LocalAppStrings.current
     val brand = LocalBrandPalette.current
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedAlbumId by remember { mutableStateOf<Long?>(null) }
     var lightboxIndex by remember { mutableStateOf<Int?>(null) }
+    var activeYouTubeVideo by remember { mutableStateOf<GalleryMediaEntity?>(null) }
 
     val categories = remember(albums) {
         albums.map { it.album.category }.distinct()
     }
+    val selectedAlbum = remember(albums, selectedAlbumId) {
+        selectedAlbumId?.let { id -> albums.firstOrNull { it.album.id == id } }
+    }
     val filteredAlbums = remember(albums, selectedCategory) {
         if (selectedCategory == null) albums else albums.filter { it.album.category == selectedCategory }
     }
-    val filteredPhotos = remember(filteredAlbums) {
-        filteredAlbums.flatMap { it.mediaItems }
+    val filteredPhotos = remember(filteredAlbums, selectedAlbum) {
+        if (selectedAlbum != null) {
+            selectedAlbum.mediaItems
+        } else {
+            filteredAlbums.flatMap { it.mediaItems }
+        }
     }
 
-    lightboxIndex?.let { idx ->
+    // Keep YouTube player and PhotoLightboxDialog mutually exclusive so only one player/observer can exist
+    activeYouTubeVideo?.let { video ->
+        val resolvedPlaybackUrl = remember(video.mediaUri) {
+            YouTubeMediaHelper.parse(video.mediaUri)?.canonicalWatchUrl ?: video.mediaUri
+        }
+        YouTubeVideoPlayerDialog(
+            youtubeUrl = resolvedPlaybackUrl,
+            title = video.title,
+            onDismiss = { activeYouTubeVideo = null },
+            onOpenExternal = onOpenExternalYouTube,
+            lifecycleHooks = youtubeLifecycleHooks
+        )
+    } ?: lightboxIndex?.let { idx ->
         PhotoLightboxDialog(
             photos = filteredPhotos,
             currentIndex = idx,
             onIndexChange = { lightboxIndex = it },
-            onDismiss = { lightboxIndex = null }
+            onDismiss = { lightboxIndex = null },
+            onPlayYouTubeVideo = { url, title ->
+                val target = filteredPhotos.getOrNull(idx)
+                lightboxIndex = null
+                activeYouTubeVideo = target?.copy(mediaUri = url, title = title)
+                    ?: GalleryMediaEntity(
+                        albumId = 0L,
+                        title = title,
+                        mediaUri = url,
+                        mediaType = "YOUTUBE"
+                    )
+            },
+            onOpenExternalYouTube = onOpenExternalYouTube,
+            youtubeLifecycleHooks = youtubeLifecycleHooks
         )
     }
 
@@ -1216,34 +971,183 @@ fun GalleryScreen(
                 ) {
                     item {
                         FilterChip(
-                            selected = selectedCategory == null,
-                            onClick = { selectedCategory = null },
-                            label = { Text(strings.allCategoriesLabel) }
+                            selected = selectedAlbum == null && selectedCategory == null,
+                            onClick = {
+                                selectedAlbumId = null
+                                selectedCategory = null
+                                lightboxIndex = null
+                                activeYouTubeVideo = null
+                            },
+                            label = { Text(strings.allCategoriesLabel) },
+                            modifier = Modifier.testTag("gallery_category_chip_all")
                         )
                     }
                     items(categories) { category ->
                         FilterChip(
-                            selected = selectedCategory == category,
-                            onClick = { selectedCategory = category },
-                            label = { Text(category) }
+                            selected = selectedAlbum == null && selectedCategory == category,
+                            onClick = {
+                                selectedAlbumId = null
+                                selectedCategory = category
+                                lightboxIndex = null
+                                activeYouTubeVideo = null
+                            },
+                            label = { Text(category) },
+                            modifier = Modifier.testTag("gallery_category_chip_${category.lowercase().replace(" ", "_")}")
                         )
                     }
                 }
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .testTag("gallery_content_list"),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (selectedTab == 0) {
+                    if (selectedAlbum != null) {
+                        item(key = "selected_album_header_${selectedAlbum.album.id}") {
+                            Card(
+                                shape = MaterialTheme.shapes.medium,
+                                colors = CardDefaults.cardColors(
+                                    containerColor = brand.burgundy.copy(alpha = 0.08f)
+                                ),
+                                border = BorderStroke(1.dp, brand.royalGold.copy(alpha = 0.7f)),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("gallery_selected_album_header")
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                                    ) {
+                                        Text(
+                                            text = strings.galleryViewingAlbumLabel,
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = brand.burgundy
+                                        )
+                                        Text(
+                                            text = selectedAlbum.album.title,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = "${selectedAlbum.album.category} • ${selectedAlbum.mediaItems.size} ${strings.photosCountSuffix}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    OutlinedButton(
+                                        onClick = {
+                                            selectedAlbumId = null
+                                            lightboxIndex = null
+                                            activeYouTubeVideo = null
+                                        },
+                                        border = BorderStroke(1.dp, brand.burgundy),
+                                        shape = MaterialTheme.shapes.small,
+                                        modifier = Modifier
+                                            .heightIn(min = 48.dp)
+                                            .testTag("gallery_clear_album_filter_btn")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = strings.galleryClearAlbumFilterLabel,
+                                            tint = brand.burgundy,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.size(6.dp))
+                                        Text(
+                                            text = strings.galleryClearAlbumFilterLabel,
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = brand.burgundy
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (filteredPhotos.isEmpty()) {
-                        item {
-                            AwaitingVerificationCard(
-                                title = strings.titleGallery,
-                                description = strings.galleryPendingDesc,
-                                icon = Icons.Outlined.PhotoLibrary
-                            )
+                        item(key = if (selectedAlbum != null) "empty_album_state" else "empty_gallery_state") {
+                            if (selectedAlbum != null) {
+                                Card(
+                                    shape = MaterialTheme.shapes.large,
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("gallery_empty_album_card")
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 24.dp, vertical = 28.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = brand.royalGold.copy(alpha = 0.16f),
+                                            border = BorderStroke(1.dp, brand.royalGold.copy(alpha = 0.55f)),
+                                            modifier = Modifier.size(52.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.PhotoLibrary,
+                                                    contentDescription = strings.galleryEmptyAlbumTitle,
+                                                    tint = brand.burgundy,
+                                                    modifier = Modifier.size(26.dp)
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = strings.galleryEmptyAlbumTitle,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Text(
+                                            text = strings.galleryEmptyAlbumDesc,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Button(
+                                            onClick = {
+                                                selectedAlbumId = null
+                                                lightboxIndex = null
+                                                activeYouTubeVideo = null
+                                            },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = brand.burgundy,
+                                                contentColor = Color.White
+                                            ),
+                                            modifier = Modifier
+                                                .heightIn(min = 48.dp)
+                                                .testTag("gallery_empty_album_clear_btn")
+                                        ) {
+                                            Text(strings.galleryClearAlbumFilterLabel)
+                                        }
+                                    }
+                                }
+                            } else {
+                                AwaitingVerificationCard(
+                                    title = strings.titleGallery,
+                                    description = strings.galleryPendingDesc,
+                                    icon = Icons.Outlined.PhotoLibrary
+                                )
+                            }
                         }
                     } else {
                         val rows = filteredPhotos.chunked(2)
@@ -1278,7 +1182,15 @@ fun GalleryScreen(
                                         }
                                     }
                                     Card(
-                                        onClick = { lightboxIndex = photoIndex },
+                                        onClick = {
+                                            if (isGalleryYouTubeMedia(photo)) {
+                                                lightboxIndex = null
+                                                activeYouTubeVideo = photo
+                                            } else {
+                                                activeYouTubeVideo = null
+                                                lightboxIndex = photoIndex
+                                            }
+                                        },
                                         shape = MaterialTheme.shapes.medium,
                                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                         modifier = Modifier
@@ -1315,11 +1227,12 @@ fun GalleryScreen(
                             GalleryAlbumCard(
                                 albumWithMedia = albumWithMedia,
                                 onClick = {
-                                    if (albumWithMedia.mediaItems.isNotEmpty()) {
-                                        selectedCategory = albumWithMedia.album.category
-                                        selectedTab = 0
-                                    }
-                                }
+                                    selectedAlbumId = albumWithMedia.album.id
+                                    lightboxIndex = null
+                                    activeYouTubeVideo = null
+                                    selectedTab = 0
+                                },
+                                modifier = Modifier.testTag("gallery_album_card_${albumWithMedia.album.id}")
                             )
                         }
                     }

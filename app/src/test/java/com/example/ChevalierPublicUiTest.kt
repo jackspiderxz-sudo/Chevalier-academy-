@@ -17,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -45,6 +46,10 @@ import com.example.data.local.entity.ApprovalStatus
 import com.example.data.local.entity.FacilityEntity
 import com.example.data.local.entity.HigherSecondaryCourseEntity
 import com.example.data.local.entity.NewsItemEntity
+import com.example.data.local.entity.SchoolPostCategory
+import com.example.data.local.entity.SchoolPostEntity
+import com.example.data.local.entity.SchoolPostStatus
+import com.example.data.local.entity.SchoolPostType
 import com.example.data.media.MediaStudioManager
 import com.example.ui.navigation.AppRoute
 import com.example.ui.navigation.ChevalierAppShell
@@ -53,7 +58,6 @@ import com.example.ui.screens.AnnouncementItemCard
 import com.example.ui.screens.FacilityItemCard
 import com.example.ui.screens.HigherSecondaryCoursesScreen
 import com.example.ui.screens.HomeScreen
-import com.example.ui.screens.ManagementLoginScreen
 import com.example.ui.screens.NewsItemCard
 import com.example.ui.screens.ParentModuleId
 import com.example.ui.screens.SocialMediaScreen
@@ -131,28 +135,23 @@ class ChevalierPublicUiTest {
         composeTestRule.onNodeWithTag("home_logo_banner_container").assertDoesNotExist()
         composeTestRule.onNodeWithTag("home_school_identity_container").assertDoesNotExist()
 
-        homeList.performScrollToNode(hasTestTag("home_section_welcome"))
-        composeTestRule.onNodeWithTag("home_section_welcome").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("home_section_welcome").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_welcome_read_more").assertDoesNotExist()
 
-        homeList.performScrollToNode(hasTestTag("home_section_updates"))
-        composeTestRule.onNodeWithTag("home_section_updates").assertIsDisplayed()
+        homeList.performScrollToNode(hasTestTag("home_section_highlights"))
+        composeTestRule.onNodeWithTag("home_section_highlights").assertIsDisplayed()
 
-        homeList.performScrollToNode(hasTestTag("home_section_gallery"))
-        composeTestRule.onNodeWithTag("home_section_gallery").assertIsDisplayed()
+        homeList.performScrollToNode(hasTestTag("home_section_social_feed"))
+        composeTestRule.onNodeWithTag("home_section_social_feed").assertIsDisplayed()
 
-        homeList.performScrollToNode(hasTestTag("home_section_contact_social"))
-        composeTestRule.onNodeWithTag("home_section_contact_social").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Siluvathur Road, Dindigul - 624 306").assertIsDisplayed()
-
-        homeList.performScrollToNode(hasTestTag("home_section_quick_access"))
-        composeTestRule.onNodeWithTag("home_section_quick_access").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_quick_academics").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_quick_courses").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_quick_facilities").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("home_quick_transport").assertIsDisplayed()
-
-        composeTestRule.onNodeWithTag("home_quick_courses").performClick()
-        assertEquals(AppRoute.COURSES, navigatedRoute)
+        // Duplicate Contact Details and removed Quick Access sections must not appear on Home Page
+        composeTestRule.onNodeWithTag("home_section_contact_social").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_open_maps_button").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_section_quick_access").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_quick_academics").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_quick_courses").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_quick_facilities").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("home_quick_transport").assertDoesNotExist()
     }
 
     @Test
@@ -223,22 +222,6 @@ class ChevalierPublicUiTest {
         assertFalse(AppRoute.HOME in AppRoute.hiddenChromeRoutes)
         assertFalse(AppRoute.NEWS in AppRoute.hiddenChromeRoutes)
         assertFalse(AppRoute.ANNOUNCEMENTS in AppRoute.hiddenChromeRoutes)
-
-        var returned = false
-        composeTestRule.setContent {
-            CompositionLocalProvider(LocalAppStrings provides stringsFor(AppLanguage.ENGLISH)) {
-                ChevalierAcademyTheme(themeMode = AppThemeMode.LIGHT) {
-                    ManagementLoginScreen(onNavigateBackToPublic = { returned = true })
-                }
-            }
-        }
-
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("management_entry_screen").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("management_return_public_button")
-            .performScrollTo()
-            .performClick()
-        assertTrue(returned)
     }
 
     @Test
@@ -672,15 +655,15 @@ class ChevalierPublicUiTest {
         composeTestRule.mainClock.autoAdvance = true
         composeTestRule.waitForIdle()
 
-        // 1 & 2. Verify exact 4-item Bottom Navigation order and absence of Gallery & More
+        // 1 & 2. Verify exact 4-item Bottom Navigation order (Home, Academics, Parent, Contact) and absence of Gallery & More
         composeTestRule.onNodeWithTag("public_bottom_navigation_bar").assertIsDisplayed()
         val homeBounds = composeTestRule.onNodeWithTag("bottom_nav_home").assertIsDisplayed().getUnclippedBoundsInRoot()
-        val parentBounds = composeTestRule.onNodeWithTag("bottom_nav_parent").assertIsDisplayed().getUnclippedBoundsInRoot()
         val academicsBounds = composeTestRule.onNodeWithTag("bottom_nav_academics").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val parentBounds = composeTestRule.onNodeWithTag("bottom_nav_parent").assertIsDisplayed().getUnclippedBoundsInRoot()
         val contactBounds = composeTestRule.onNodeWithTag("bottom_nav_contact").assertIsDisplayed().getUnclippedBoundsInRoot()
-        assertTrue(homeBounds.left < parentBounds.left)
-        assertTrue(parentBounds.left < academicsBounds.left)
-        assertTrue(academicsBounds.left < contactBounds.left)
+        assertTrue(homeBounds.left < academicsBounds.left)
+        assertTrue(academicsBounds.left < parentBounds.left)
+        assertTrue(parentBounds.left < contactBounds.left)
         composeTestRule.onNodeWithTag("bottom_nav_gallery").assertDoesNotExist()
         composeTestRule.onNodeWithTag("bottom_nav_more").assertDoesNotExist()
         assertEquals(
@@ -697,7 +680,29 @@ class ChevalierPublicUiTest {
 
         composeTestRule.onNodeWithTag("bottom_nav_academics").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("academics_screen_list").assertIsDisplayed()
+        val academyPageList = composeTestRule.onNodeWithTag("academy_page_screen").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_header_title").assertTextEquals("CHEVALIER ACADEMY")
+        composeTestRule.onNodeWithTag("academy_card_news_announcements").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_academic_calendar").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_examinations").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_about_school").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_higher_secondary_courses").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_facilities").assertIsDisplayed()
+        academyPageList.performScrollToNode(hasTestTag("academy_cards_grid"))
+        composeTestRule.onNodeWithTag("academy_card_transport").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_school_timetable").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_faculty_staff").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_student_activities").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_gallery").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_card_academics").assertIsDisplayed()
+
+        // Tap Academics card to open Academy Category Detail screen and return via Header Back
+        composeTestRule.onNodeWithTag("academy_card_academics").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("academy_category_detail_academics").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("academy_header_back_btn").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("academy_page_screen").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("bottom_nav_contact").performClick()
         composeTestRule.waitForIdle()
@@ -724,9 +729,9 @@ class ChevalierPublicUiTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Campus Tour Video").assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("gallery_lightbox_dialog").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("lightbox_open_youtube_button").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("lightbox_close_button").performClick()
+        composeTestRule.onNodeWithTag("youtube_player_dialog").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("youtube_player_external_fallback_btn").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("youtube_player_close_btn").performClick()
         composeTestRule.waitForIdle()
 
         // Return to Parent screen using normal TopBar Back navigation
@@ -800,12 +805,12 @@ class ChevalierPublicUiTest {
         // Wide screen uses NavigationRail instead of Bottom NavigationBar
         composeTestRule.onNodeWithTag("public_bottom_navigation_bar").assertDoesNotExist()
         val homeBounds = composeTestRule.onNodeWithTag("bottom_nav_home").assertIsDisplayed().getUnclippedBoundsInRoot()
-        val parentBounds = composeTestRule.onNodeWithTag("bottom_nav_parent").assertIsDisplayed().getUnclippedBoundsInRoot()
         val academicsBounds = composeTestRule.onNodeWithTag("bottom_nav_academics").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val parentBounds = composeTestRule.onNodeWithTag("bottom_nav_parent").assertIsDisplayed().getUnclippedBoundsInRoot()
         val contactBounds = composeTestRule.onNodeWithTag("bottom_nav_contact").assertIsDisplayed().getUnclippedBoundsInRoot()
-        assertTrue(homeBounds.top < parentBounds.top)
-        assertTrue(parentBounds.top < academicsBounds.top)
-        assertTrue(academicsBounds.top < contactBounds.top)
+        assertTrue(homeBounds.top < academicsBounds.top)
+        assertTrue(academicsBounds.top < parentBounds.top)
+        assertTrue(parentBounds.top < contactBounds.top)
         composeTestRule.onNodeWithTag("bottom_nav_gallery").assertDoesNotExist()
         composeTestRule.onNodeWithTag("bottom_nav_more").assertDoesNotExist()
 
@@ -813,7 +818,7 @@ class ChevalierPublicUiTest {
         composeTestRule.onNodeWithTag("bottom_nav_parent").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText(stringsFor(AppLanguage.TAMIL).parentPortalTitle).assertIsDisplayed()
-        composeTestRule.onNodeWithText(stringsFor(AppLanguage.TAMIL).parentGlanceSectionTitle).assertIsDisplayed()
+        composeTestRule.onNodeWithText(stringsFor(AppLanguage.TAMIL).parentServicesSectionTitle).assertIsDisplayed()
 
         // Verify Hindi & English localization dictionaries for Parent Portal & Modules
         assertEquals("Parent", stringsFor(AppLanguage.ENGLISH).navParent)
@@ -822,18 +827,36 @@ class ChevalierPublicUiTest {
         assertEquals("PARENT PORTAL", stringsFor(AppLanguage.ENGLISH).parentPortalTitle)
         assertTrue(stringsFor(AppLanguage.HINDI).parentPortalTitle.isNotBlank())
         assertTrue(stringsFor(AppLanguage.HINDI).parentModuleEmergencyInfo.isNotBlank())
+        assertTrue(stringsFor(AppLanguage.HINDI).parentModuleParentGuidance.isNotBlank())
+        assertTrue(stringsFor(AppLanguage.HINDI).parentStudentSocialFeedTitle.isNotBlank())
         assertTrue(stringsFor(AppLanguage.HINDI).openTopMenuDescription.isNotBlank())
     }
 
     @Test
     @Config(sdk = [36], qualifiers = "w412dp-h915dp")
-    fun `parent dashboard renders all six sections eleven module cards search notification and back navigation`() {
+    fun `parent dashboard renders hero twelve services in 4x3 grid and student social feed without engagement actions`() {
         val app = ApplicationProvider.getApplicationContext<ChevalierApplication>()
+        val db = ChevalierDatabase.getInstance(app)
+        var publishedPostId = 0L
         runBlocking {
             app.container.userPreferencesRepository.restorePreferences(
                 language = AppLanguage.ENGLISH,
                 isOnboarded = true,
                 themeMode = AppThemeMode.LIGHT
+            )
+            publishedPostId = db.schoolPostDao().upsert(
+                SchoolPostEntity(
+                    postType = SchoolPostType.YOUTUBE_DIRECT,
+                    category = SchoolPostCategory.EVENTS,
+                    title = "Annual Science Exhibition Highlights",
+                    description = "Students presented robotics and renewable energy models.",
+                    youtubeUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    status = SchoolPostStatus.PUBLISHED,
+                    isFeatured = true,
+                    createdAtMillis = 1_700_000_000_000L,
+                    publishedAtMillis = 1_700_000_000_000L,
+                    updatedAtMillis = 1_700_000_000_000L
+                )
             )
         }
 
@@ -883,7 +906,7 @@ class ChevalierPublicUiTest {
         composeTestRule.onNodeWithTag("bottom_nav_parent").performClick()
         composeTestRule.waitForIdle()
 
-        // Section A — Top Header
+        // 1. Parent Portal Top Bar
         composeTestRule.onNodeWithTag("parent_portal_top_header").assertIsDisplayed()
         composeTestRule.onNodeWithText("CHEVALIER ACADEMY").assertIsDisplayed()
         composeTestRule.onNodeWithText("PARENT PORTAL").assertIsDisplayed()
@@ -891,29 +914,18 @@ class ChevalierPublicUiTest {
         composeTestRule.onNodeWithTag("parent_header_notification_button").assertIsDisplayed()
         composeTestRule.onNodeWithTag("top_bar_more_menu_button").assertIsDisplayed()
 
-        // Section B — Student Information Card (clearly marked sample preview)
-        composeTestRule.onNodeWithTag("parent_student_info_card").assertIsDisplayed()
+        // 2. Student Information Hero Panel
+        val heroBounds = composeTestRule.onNodeWithTag("parent_student_info_card").assertIsDisplayed().getUnclippedBoundsInRoot()
         composeTestRule.onNodeWithTag("parent_student_avatar", useUnmergedTree = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("Sample Preview", useUnmergedTree = true).assertIsDisplayed()
 
-        // Section C — Your Child at a Glance (Attendance & Exam Results Overview)
-        composeTestRule.onNodeWithTag("parent_glance_attendance_card").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("parent_glance_exams_card").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("parent_glance_attendance_card").performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("parent_module_screen_attendance").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("top_bar_back_button").assertIsDisplayed().performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("parent_screen_list").assertIsDisplayed()
-
-        // Section D — Latest School Updates + View All navigation & Back
-        composeTestRule.onNodeWithTag("parent_screen_list")
-            .performScrollToNode(hasTestTag("parent_updates_view_all"))
-        composeTestRule.onNodeWithTag("parent_updates_view_all").assertIsDisplayed().performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("top_bar_back_button").assertIsDisplayed().performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("parent_screen_list").assertIsDisplayed()
+        // Verify removed sections do NOT exist
+        composeTestRule.onNodeWithTag("parent_glance_section").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("parent_glance_attendance_card").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("parent_glance_exams_card").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("parent_latest_updates_section").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("parent_updates_view_all").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("powered_by_jk_labs_footer").assertDoesNotExist()
 
         // Top Header Notification action & Back
         composeTestRule.onNodeWithTag("parent_header_notification_button").performClick()
@@ -922,15 +934,32 @@ class ChevalierPublicUiTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("parent_screen_list").assertIsDisplayed()
 
-        // Section E — All 11 Parent Services module cards present & navigable
-        assertEquals(11, ParentModuleId.entries.size)
+        // 3. Parent Services — All 12 module cards present in a fixed 4-column x 3-row grid
+        assertEquals(12, ParentModuleId.entries.size)
+        val servicesHeaderBounds = composeTestRule.onNodeWithTag("parent_services_section").assertIsDisplayed().getUnclippedBoundsInRoot()
+        assertTrue(heroBounds.bottom <= servicesHeaderBounds.top)
+
+        val row1Col1 = composeTestRule.onNodeWithTag("parent_module_card_student_profile").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val row1Col2 = composeTestRule.onNodeWithTag("parent_module_card_exams_results").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val row1Col3 = composeTestRule.onNodeWithTag("parent_module_card_attendance").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val row1Col4 = composeTestRule.onNodeWithTag("parent_module_card_homework_assignments").assertIsDisplayed().getUnclippedBoundsInRoot()
+        assertTrue(row1Col1.left < row1Col2.left)
+        assertTrue(row1Col2.left < row1Col3.left)
+        assertTrue(row1Col3.left < row1Col4.left)
+        assertEquals(row1Col1.top, row1Col4.top)
+
+        val row2Col1 = composeTestRule.onNodeWithTag("parent_module_card_child_activities").assertIsDisplayed().getUnclippedBoundsInRoot()
+        val row3Col4 = composeTestRule.onNodeWithTag("parent_module_card_parent_guidance").assertIsDisplayed().getUnclippedBoundsInRoot()
+        assertTrue(row1Col1.bottom <= row2Col1.top)
+        assertTrue(row2Col1.bottom <= row3Col4.top)
+
         ParentModuleId.entries.forEach { moduleId ->
             composeTestRule.onNodeWithTag("parent_screen_list")
                 .performScrollToNode(hasTestTag("parent_module_card_${moduleId.routeKey}"))
             composeTestRule.onNodeWithTag("parent_module_card_${moduleId.routeKey}").assertIsDisplayed()
         }
 
-        // Open Emergency Information module & verify dedicated screen + Back button
+        // Open Emergency Information & Parent Guidance modules and return via Back
         composeTestRule.onNodeWithTag("parent_module_card_emergency_info").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("parent_module_screen_emergency_info").assertIsDisplayed()
@@ -940,21 +969,40 @@ class ChevalierPublicUiTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("parent_screen_list").assertIsDisplayed()
 
-        // Section F — Powered by JK Labs Footer
+        composeTestRule.onNodeWithTag("parent_module_card_parent_guidance").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("parent_module_screen_parent_guidance").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("top_bar_back_button").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("parent_screen_list").assertIsDisplayed()
+
+        // 4. Student Social Feed reuses Home Page published posts WITHOUT Like, Bookmark, Share, or Comment actions
         composeTestRule.onNodeWithTag("parent_screen_list")
-            .performScrollToNode(hasTestTag("powered_by_jk_labs_footer"))
-        composeTestRule.onNodeWithTag("powered_by_jk_labs_footer").assertIsDisplayed()
+            .performScrollToNode(hasTestTag("parent_student_social_feed_section"))
+        composeTestRule.onNodeWithTag("parent_student_social_feed_section").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("parent_screen_list")
+            .performScrollToNode(hasTestTag("social_post_card_$publishedPostId"))
+        composeTestRule.onNodeWithTag("social_post_card_$publishedPostId").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("social_post_title_$publishedPostId").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("social_post_description_$publishedPostId").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("social_post_actions_$publishedPostId").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("post_like_btn_$publishedPostId").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("post_bookmark_btn_$publishedPostId").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("powered_by_jk_labs_footer").assertDoesNotExist()
+
+        // 5. Original Bottom Navigation remains visible
+        composeTestRule.onNodeWithTag("public_bottom_navigation_bar").assertIsDisplayed()
 
         // Top Header Search filters Parent Services modules accurately
         composeTestRule.onNodeWithTag("parent_header_search_button").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("parent_screen_list")
             .performScrollToNode(hasTestTag("parent_dashboard_search_field"))
-        composeTestRule.onNodeWithTag("parent_dashboard_search_field").performTextInput("Emergency")
+        composeTestRule.onNodeWithTag("parent_dashboard_search_field").performTextInput("Guidance")
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("parent_screen_list")
-            .performScrollToNode(hasTestTag("parent_module_card_emergency_info"))
-        composeTestRule.onNodeWithTag("parent_module_card_emergency_info").assertIsDisplayed()
+            .performScrollToNode(hasTestTag("parent_module_card_parent_guidance"))
+        composeTestRule.onNodeWithTag("parent_module_card_parent_guidance").assertIsDisplayed()
         composeTestRule.onNodeWithTag("parent_module_card_leave_request").assertDoesNotExist()
         composeTestRule.onNodeWithTag("parent_header_search_button").performClick()
         composeTestRule.waitForIdle()

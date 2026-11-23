@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.example.core.model.AppLanguage
 import com.example.core.model.SchoolTenantContext
 import com.example.core.notifications.LocalAlertNotifier
 import com.example.data.backend.BackendConfigDetector
@@ -33,11 +34,13 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -49,6 +52,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.nio.ByteBuffer
+import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
@@ -321,6 +325,247 @@ class Phase4BackendSecurityTest {
         assertFalse(notifier.notifyLocalEventIfPermitted(101, "Test", "Body", alertsEnabled = false))
     }
 
+    @Test
+    fun `restore rejects backups without active master admin and preserves existing db media and preferences`() = runBlocking {
+        schoolRepo.ensureVerifiedProfileSeeded()
+        prefsRepo.setLanguage(AppLanguage.TAMIL, markSelectedOnLaunch = true)
+        val master = mgmtRepo.setupMasterAdmin("Initial Principal", "admin_orig", "246810", "246810").getOrThrow().account
+        mgmtRepo.createStaffAccount(
+            actor = master,
+            username = "staff_only",
+            displayName = "Staff User",
+            role = ManagementRole.STAFF,
+            initialPin = "112233",
+            permissions = listOf(
+                StaffPermissionEntity(accountId = 0, sectionKey = ManagementSection.NEWS.key, canView = true)
+            )
+        ).getOrThrow()
+        mgmtRepo.saveManagedContentRecord(
+            actor = master,
+            section = ManagementSection.NEWS,
+            recordId = 0L,
+            recordTitle = "Original Live News",
+            proposedJson = ContentSnapshotSerializer.newsToJson(
+                NewsItemEntity(title = "Original Live News", summary = "Original Summary", fullBody = "Body", publishedDateText = "2026-11-20")
+            ),
+            saveMode = PublishSaveMode.PUBLISH_NOW,
+            changeSummary = "Seed live news"
+        ).getOrThrow()
+
+        val liveMediaDir = File(context.filesDir, "chevalier_media").apply { mkdirs() }
+        val sentinelMedia = File(liveMediaDir, "sentinel_photo.txt").apply { writeText("live-media-bytes") }
+
+        val validArchive = backupManager.createEncryptedBackupBytes("ArchivePass123").getOrThrow()
+
+        // Variant A: empty managementAccounts array (no MASTER_ADMIN)
+        val emptyAccountsArchive = rewriteSnapshotWithValidDigest(validArchive, "ArchivePass123") { snapshot ->
+            snapshot.put("managementAccounts", JSONArray())
+        }
+        // Variant B: only STAFF account (no MASTER_ADMIN)
+        val staffOnlyArchive = rewriteSnapshotWithValidDigest(validArchive, "ArchivePass123") { snapshot ->
+            val accounts = snapshot.getJSONArray("managementAccounts")
+            val filtered = JSONArray()
+            for (i in 0 until accounts.length()) {
+                val acc = accounts.getJSONObject(i)
+                if (acc.getString("role") != ManagementRole.MASTER_ADMIN) {
+                    filtered.put(acc)
+                }
+            }
+            snapshot.put("managementAccounts", filtered)
+        }
+        // Variant C: MASTER_ADMIN present but inactive (isActive = false)
+        val inactiveMasterArchive = rewriteSnapshotWithValidDigest(validArchive, "ArchivePass123") { snapshot ->
+            val accounts = snapshot.getJSONArray("managementAccounts")
+            for (i in 0 until accounts.length()) {
+                val acc = accounts.getJSONObject(i)
+                if (acc.getString("role") == ManagementRole.MASTER_ADMIN) {
+                    acc.put("isActive", false)
+                }
+            }
+        }
+
+        for (badArchive in listOf(emptyAccountsArchive, staffOnlyArchive, inactiveMasterArchive)) {
+            val inspectRes = backupManager.inspectEncryptedBackup(badArchive, "ArchivePass123")
+            assertTrue("Expected inspectEncryptedBackup to reject invalid governance archive", inspectRes.isFailure)
+            assertTrue(
+                inspectRes.exceptionOrNull()?.message?.contains("active Master Admin", ignoreCase = true) == true
+            )
+
+            val restoreRes = backupManager.restoreEncryptedBackupBytes(
+                bytes = badArchive,
+                password = "ArchivePass123",
+                actorName = master.account.displayName,
+                actorAccountId = master.account.id,
+                actorRole = master.account.role
+            )
+            assertTrue("Expected restoreEncryptedBackupBytes to reject invalid governance archive", restoreRes.isFailure)
+            assertTrue(
+                restoreRes.exceptionOrNull()?.message?.contains("active Master Admin", ignoreCase = true) == true
+            )
+        }
+
+        // Verify existing DB, media files, and DataStore preferences were NOT modified
+        val accountsAfter = database.managementAccountDao().getAllAccountsWithPermissionsOnce()
+        assertEquals(2, accountsAfter.size)
+        assertTrue(accountsAfter.any { it.account.username == "admin_orig" && it.account.isActive })
+        val newsAfter = database.newsDao().observeAll().first()
+        assertEquals(1, newsAfter.size)
+        assertEquals("Original Live News", newsAfter.single().title)
+        assertTrue(sentinelMedia.exists())
+        assertEquals("live-media-bytes", sentinelMedia.readText())
+        assertEquals(AppLanguage.TAMIL, prefsRepo.preferencesFlow.first().selectedLanguage)
+    }
+
+    @Test
+    fun `viewmodel invalidates session on restore even with matching numeric id and prevents conflicting auth states`() {
+        val backupFile = File(context.cacheDir, "bug03_valid_restore.chvbak")
+        val invalidBackupFile = File(context.cacheDir, "bug03_invalid_restore.chvbak")
+        val restoredMasterId: Long
+        runBlocking {
+            schoolRepo.ensureVerifiedProfileSeeded()
+            prefsRepo.setLanguage(AppLanguage.HINDI, markSelectedOnLaunch = true)
+            val restoredMaster = mgmtRepo.setupMasterAdmin("Restored Principal", "restored_admin", "778899", "778899").getOrThrow().account
+            restoredMasterId = restoredMaster.account.id
+            mgmtRepo.saveManagedContentRecord(
+                actor = restoredMaster,
+                section = ManagementSection.NEWS,
+                recordId = 0L,
+                recordTitle = "Restored Campus Notice",
+                proposedJson = ContentSnapshotSerializer.newsToJson(
+                    NewsItemEntity(title = "Restored Campus Notice", summary = "Restored", fullBody = "Restored body", publishedDateText = "2026-11-20")
+                ),
+                saveMode = PublishSaveMode.PUBLISH_NOW,
+                changeSummary = "Add restored notice"
+            ).getOrThrow()
+
+            val validBytes = backupManager.createEncryptedBackupBytes("BackupPass123").getOrThrow()
+            backupFile.writeBytes(validBytes)
+            val invalidBytes = rewriteSnapshotWithValidDigest(validBytes, "BackupPass123") { snapshot ->
+                val accounts = snapshot.getJSONArray("managementAccounts")
+                for (i in 0 until accounts.length()) {
+                    val acc = accounts.getJSONObject(i)
+                    if (acc.getString("role") == ManagementRole.MASTER_ADMIN) {
+                        acc.put("isActive", false)
+                    }
+                }
+            }
+            invalidBackupFile.writeBytes(invalidBytes)
+
+            // Reset DB and sequence so active pre-restore user shares the exact same numeric account.id
+            database.clearAllTables()
+            database.openHelper.writableDatabase.execSQL("DELETE FROM sqlite_sequence")
+            prefsRepo.setLanguage(AppLanguage.ENGLISH, markSelectedOnLaunch = true)
+            val oldMaster = mgmtRepo.setupMasterAdmin("Previous Principal", "old_admin", "246810", "246810").getOrThrow().account
+            assertEquals(restoredMasterId, oldMaster.account.id)
+            mgmtRepo.saveManagedContentRecord(
+                actor = oldMaster,
+                section = ManagementSection.NEWS,
+                recordId = 0L,
+                recordTitle = "Pre-Restore Local News",
+                proposedJson = ContentSnapshotSerializer.newsToJson(
+                    NewsItemEntity(title = "Pre-Restore Local News", summary = "Local", fullBody = "Local body", publishedDateText = "2026-11-20")
+                ),
+                saveMode = PublishSaveMode.PUBLISH_NOW,
+                changeSummary = "Seed local news"
+            ).getOrThrow()
+        }
+
+        val store = ViewModelStore()
+        val collectorScope = CoroutineScope(Dispatchers.Main.immediate + Job())
+        val observedAuthStates = mutableListOf<ManagementAuthUiState>()
+        try {
+            val vm = ViewModelProvider(
+                store,
+                ManagementViewModel.Factory(
+                    managementRepository = mgmtRepo,
+                    backupRestoreManager = backupManager,
+                    preferencesRepository = prefsRepo
+                )
+            )[ManagementViewModel::class.java]
+
+            collectorScope.launch {
+                vm.authUiState.collect { observedAuthStates.add(it) }
+            }
+
+            vm.loginWithPin("old_admin", "246810")
+            awaitMainCondition {
+                (vm.authUiState.value as? ManagementAuthUiState.Authenticated)?.session?.account?.username == "old_admin"
+            }
+
+            // Failed restore of invalid backup preserves current Authenticated session & existing data
+            vm.confirmRestoreFromUri(Uri.fromFile(invalidBackupFile), "BackupPass123")
+            awaitMainCondition { !vm.isBusy.value && vm.errorMessage.value != null }
+            assertEquals(
+                "old_admin",
+                (vm.authUiState.value as? ManagementAuthUiState.Authenticated)?.session?.account?.username
+            )
+            assertEquals(
+                "Pre-Restore Local News",
+                runBlocking { database.newsDao().observeAll().first().single().title }
+            )
+
+            // Populate transient search & preview state before valid restore
+            vm.performGlobalSearch("Local")
+            awaitMainCondition { vm.searchResults.value.isNotEmpty() }
+            vm.inspectBackupUri(Uri.fromFile(backupFile), "BackupPass123")
+            awaitMainCondition { !vm.isBusy.value && vm.backupPreview.value != null }
+
+            observedAuthStates.clear()
+            vm.confirmRestoreFromUri(Uri.fromFile(backupFile), "BackupPass123")
+            awaitMainCondition {
+                !vm.isBusy.value && vm.authUiState.value is ManagementAuthUiState.LoginRequired
+            }
+            // Allow any pending Room invalidations to settle cleanly
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(100L)
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+
+            // Must transition cleanly to LoginRequired with notice; NEVER keep old session or bind new account by ID
+            val finalState = vm.authUiState.value as? ManagementAuthUiState.LoginRequired
+            assertNotNull("Expected LoginRequired after restore", finalState)
+            assertTrue(finalState!!.noticeMessage?.contains("sign in again", ignoreCase = true) == true)
+            assertNull(vm.backupPreview.value)
+            assertTrue(vm.searchResults.value.isEmpty())
+            assertNull(vm.errorMessage.value)
+
+            // Assert zero conflicting transitions during/after restore
+            assertFalse(
+                "Must never emit FirstTimeSetup during/after valid restore",
+                observedAuthStates.any { it is ManagementAuthUiState.FirstTimeSetup }
+            )
+            assertFalse(
+                "Must never emit Authenticated(restored_admin) automatically after restore",
+                observedAuthStates.any {
+                    it is ManagementAuthUiState.Authenticated && it.session.account.username == "restored_admin"
+                }
+            )
+            val loginStates = observedAuthStates.filterIsInstance<ManagementAuthUiState.LoginRequired>()
+            assertEquals(1, loginStates.size)
+
+            // Old overwritten credentials must be rejected; restored credentials must succeed
+            vm.loginWithPin("old_admin", "246810")
+            awaitMainCondition { !vm.isBusy.value && vm.errorMessage.value != null }
+            assertTrue(vm.authUiState.value is ManagementAuthUiState.LoginRequired)
+
+            vm.loginWithPin("restored_admin", "778899")
+            awaitMainCondition {
+                !vm.isBusy.value &&
+                    (vm.authUiState.value as? ManagementAuthUiState.Authenticated)?.session?.account?.username == "restored_admin"
+            }
+            assertEquals(
+                "Restored Campus Notice",
+                runBlocking { database.newsDao().observeAll().first().single().title }
+            )
+            assertEquals(AppLanguage.HINDI, runBlocking { prefsRepo.preferencesFlow.first().selectedLanguage })
+        } finally {
+            collectorScope.cancel()
+            store.clear()
+            backupFile.delete()
+            invalidBackupFile.delete()
+            Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
+    }
+
     private fun awaitMainCondition(timeoutMs: Long = 6_000L, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
@@ -330,6 +575,56 @@ class Phase4BackendSecurityTest {
         }
         Shadows.shadowOf(Looper.getMainLooper()).idle()
         assertTrue("Condition timed out after ${timeoutMs}ms", condition())
+    }
+
+    private fun rewriteSnapshotWithValidDigest(
+        encryptedBytes: ByteArray,
+        password: String,
+        mutator: (JSONObject) -> Unit
+    ): ByteArray {
+        val buf = ByteBuffer.wrap(encryptedBytes)
+        buf.position(12)
+        val salt = ByteArray(16).also { buf.get(it) }
+        val iv = ByteArray(12).also { buf.get(it) }
+        val ciphertext = ByteArray(buf.remaining()).also { buf.get(it) }
+        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val keySpec = PBEKeySpec(password.toCharArray(), salt, 120_000, 256)
+        val secretKey = SecretKeySpec(factory.generateSecret(keySpec).encoded, "AES")
+        keySpec.clearPassword()
+        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
+        val zipBytes = cipher.doFinal(ciphertext)
+
+        val entries = linkedMapOf<String, ByteArray>()
+        ZipInputStream(ByteArrayInputStream(zipBytes)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                entries[entry.name] = zis.readBytes()
+                entry = zis.nextEntry
+            }
+        }
+        val snapshotJson = JSONObject(String(entries.getValue("database_snapshot.json"), Charsets.UTF_8))
+        mutator(snapshotJson)
+        val mutatedSnapshotStr = snapshotJson.toString()
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(mutatedSnapshotStr.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val manifestJson = JSONObject(String(entries.getValue("manifest.json"), Charsets.UTF_8))
+        manifestJson.put("snapshotSha256", digest)
+        entries["database_snapshot.json"] = mutatedSnapshotStr.toByteArray(Charsets.UTF_8)
+        entries["manifest.json"] = manifestJson.toString().toByteArray(Charsets.UTF_8)
+
+        val updatedZip = ByteArrayOutputStream().use { baos ->
+            ZipOutputStream(baos).use { zos ->
+                entries.forEach { (name, bytes) ->
+                    zos.putNextEntry(ZipEntry(name))
+                    zos.write(bytes)
+                    zos.closeEntry()
+                }
+            }
+            baos.toByteArray()
+        }
+        return encryptZipBytesForTest(updatedZip, password)
     }
 
     private fun tamperSnapshotInEncryptedArchive(encryptedBytes: ByteArray, password: String): ByteArray {

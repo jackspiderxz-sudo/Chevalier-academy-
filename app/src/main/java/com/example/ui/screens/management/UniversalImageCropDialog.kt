@@ -63,6 +63,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureFullScreenDialogProperties
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -156,8 +158,9 @@ fun UniversalImageCropDialog(
 
     Dialog(
         onDismissRequest = { if (!isSavingCrop) onDismiss() },
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = SecureFullScreenDialogProperties
     ) {
+        ApplySecureDialogWindow()
         Surface(
             modifier = Modifier
                 .safeDrawingPadding()

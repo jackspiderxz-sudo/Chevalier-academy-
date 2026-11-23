@@ -58,6 +58,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
+import com.example.ui.components.SecureFullScreenDialogProperties
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -150,7 +153,10 @@ internal fun UniversalContentEditorScaffold(
         pendingDiscardAction?.let { onProceed ->
             AlertDialog(
                 onDismissRequest = { pendingDiscardAction = null },
-                title = { Text(mStrings.editorDiscardChangesTitle) },
+                title = {
+                    ApplySecureDialogWindow()
+                    Text(mStrings.editorDiscardChangesTitle)
+                },
                 text = { Text(mStrings.editorDiscardChangesMsg) },
                 confirmButton = {
                     Button(
@@ -173,7 +179,8 @@ internal fun UniversalContentEditorScaffold(
                         Text(mStrings.editorKeepEditingBtn)
                     }
                 },
-                modifier = Modifier.testTag("editor_discard_confirm_dialog")
+                modifier = Modifier.testTag("editor_discard_confirm_dialog"),
+                properties = SecureDialogProperties
             )
         }
     }
@@ -446,8 +453,9 @@ internal fun UniversalContentEditorScaffold(
     if (isFullScreenDialog) {
         Dialog(
             onDismissRequest = { attemptLeave(onClose) },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
+            properties = SecureFullScreenDialogProperties
         ) {
+            ApplySecureDialogWindow()
             BackHandler {
                 attemptLeave(onClose)
             }

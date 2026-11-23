@@ -21,6 +21,7 @@ import com.example.core.i18n.LocalAppStrings
 import com.example.core.i18n.stringsFor
 import com.example.core.model.AppLanguage
 import com.example.core.model.AppThemeMode
+import com.example.core.security.ScreenProtectionConfig
 import com.example.ui.navigation.ChevalierAppShell
 import com.example.ui.theme.ChevalierAcademyTheme
 import com.example.ui.viewmodel.MainViewModel
@@ -37,7 +38,12 @@ class MainActivity : ComponentActivity() {
 
     private val schoolDataViewModel: SchoolDataViewModel by viewModels {
         val app = application as ChevalierApplication
-        SchoolDataViewModel.Factory(app.container.schoolRepository)
+        SchoolDataViewModel.Factory(
+            schoolRepository = app.container.schoolRepository,
+            socialFeedRepository = app.container.socialFeedRepository,
+            academicsV2Repository = app.container.academicsV2Repository,
+            preferencesRepository = app.container.userPreferencesRepository
+        )
     }
 
     private val managementViewModel: ManagementViewModel by viewModels {
@@ -46,12 +52,15 @@ class MainActivity : ComponentActivity() {
             managementRepository = app.container.managementRepository,
             backupRestoreManager = app.container.backupRestoreManager,
             preferencesRepository = app.container.userPreferencesRepository,
-            centralBackendStatus = app.container.centralBackendStatus
+            centralBackendStatus = app.container.centralBackendStatus,
+            academicsV2Repository = app.container.academicsV2Repository
         )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Centrally configurable screenshot, screen recording, and Recent Apps snapshot protection
+        ScreenProtectionConfig.applyToWindow(window)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             splashScreen.setOnExitAnimationListener { splashScreenView ->
                 splashScreenView.remove()

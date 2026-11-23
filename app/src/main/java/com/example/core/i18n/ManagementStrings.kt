@@ -133,6 +133,8 @@ data class ManagementBackupAndDashboardStrings(
     val cardPhotoGallery: String,
     val cardContactDetails: String,
     val cardSocialMedia: String,
+    val cardSchoolPosts: String,
+    val cardSchoolHighlights: String,
     val cardMediaStudio: String,
     val cardStaffManagement: String,
     val cardApprovalCenter: String,
@@ -175,6 +177,8 @@ data class ManagementBackupAndDashboardStrings(
     val backendStatusUnconfiguredLabel: String,
     val backendStatusAutoBackupLabel: String,
     val backendStatusRemoteSyncLabel: String,
+    val backendStatusAuthModeLabel: String,
+    val backendStatusTenantIdTemplate: String,
     val globalSearchNoResultsTemplate: String
 )
 
@@ -228,6 +232,12 @@ data class ManagementStaffAndMediaStrings(
     val mediaSizeStatsTemplate: String,
     val mediaInvalidYouTubeError: String,
     val mediaVideoTitleRequiredError: String,
+    val mediaEditMetadataBtn: String,
+    val mediaEditMetadataDialogTitle: String,
+    val mediaTitleLabel: String,
+    val mediaCategoryLabel: String,
+    val mediaTitleRequiredError: String,
+    val mediaCategoryRequiredError: String,
     val photoAdjTitle: String,
     val photoAdjSubtitle: String,
     val photoAdjLivePreviewTitle: String,
@@ -415,6 +425,164 @@ data class ManagementUniversalMediaStrings(
 )
 
 @Immutable
+data class ManagementSchoolFeedStrings(
+    // Filters & Tabs
+    val filterAll: String,
+    val filterDraftPending: String,
+    val filterArchived: String,
+    val filterActive24h: String,
+    val filterExpired: String,
+    val allCategoriesLabel: String,
+    val postsTabTemplate: String,
+    val highlightsTabTemplate: String,
+    // Categories
+    val categoryGeneral: String,
+    val categoryAcademics: String,
+    val categoryEvents: String,
+    val categorySports: String,
+    val categoryAchievements: String,
+    val categoryCampusLife: String,
+    val categoryAnnouncement: String,
+    // Post Types & Statuses
+    val postTypeYouTubeDirect: String,
+    val postTypeCustomVideo: String,
+    val postTypePhoto: String,
+    val photoPostCountTemplate: String,
+    val statusArchived: String,
+    val pinnedBadge: String,
+    val highlightActiveBadgeTemplate: String,
+    val highlightExpiredBadge: String,
+    // Admin Lists & Empty States
+    val createSchoolPostDesc: String,
+    val add24hHighlightDesc: String,
+    val emptyPostsMessage: String,
+    val emptyFilteredPostsMessage: String,
+    val createFirstPostBtn: String,
+    val highlightsInfoBanner: String,
+    val emptyHighlightsMessage: String,
+    val emptyFilteredHighlightsMessage: String,
+    val addHighlightBtn: String,
+    val deleteHighlightMsgTemplate: String,
+    val postFallbackTitleTemplate: String,
+    val highlightFallbackTitleTemplate: String,
+    val highlightVideoIdTitleTemplate: String,
+    val schoolHighlightFallbackTitle: String,
+    val youtubeVideoFallbackTitleTemplate: String,
+    val youtubeShortFallbackTitleTemplate: String,
+    val postPreviewDesc: String,
+    val updatedTimestampTemplate: String,
+    val expiresTimestampTemplate: String,
+    val pinPostDesc: String,
+    val unpinPostDesc: String,
+    val archivePostDesc: String,
+    val restoreArchivedPostDesc: String,
+    val youtubeShortThumbnailDesc: String,
+    // Highlight Composer
+    val editHighlightTitle: String,
+    val newHighlightTitle: String,
+    val highlightSubtitle: String,
+    val invalidShortsUrlError: String,
+    val changeSummaryUpdatedHighlight: String,
+    val changeSummaryAddedHighlight: String,
+    val highlightComposerInfoBanner: String,
+    val youtubeShortsUrlLabel: String,
+    val onlyShortsAcceptedHint: String,
+    val autoThumbnailPreviewHint: String,
+    val highlightLabelOptional: String,
+    val highlightThumbnailPreviewTitle: String,
+    val refreshBtn: String,
+    val youtubeShortsPreviewDesc: String,
+    val youtubeShortLabel: String,
+    // Post Composer
+    val editPostTitle: String,
+    val newPostTitle: String,
+    val postTypeSectionLabel: String,
+    val categorySectionLabel: String,
+    val youtubeDirectInfoBanner: String,
+    val youtubeVideoUrlLabel: String,
+    val youtubeVideoUrlPlaceholder: String,
+    val youtubeUrlInvalidHint: String,
+    val youtubeUrlSupportedHint: String,
+    val youtubePreviewTitle: String,
+    val fetchingLabel: String,
+    val refreshInfoBtn: String,
+    val postTitleLabel: String,
+    val descriptionLabel: String,
+    val optionalCustomThumbnailLabel: String,
+    val photosMaxHeaderTemplate: String,
+    val addPhotosBtn: String,
+    val addFromMediaStudioBtn: String,
+    val photoOneOfMaxTemplate: String,
+    val photoIndexDescTemplate: String,
+    val removePhotoIndexDescTemplate: String,
+    val movePhotoLeftDesc: String,
+    val moveEarlierBtn: String,
+    val moveLaterBtn: String,
+    val movePhotoRightDesc: String,
+    val selectedPhotoOfTotalTemplate: String,
+    val pinFeaturePostTitle: String,
+    val pinFeaturePostSubtitle: String,
+    val changeSummaryOptionalLabel: String,
+    // Post Composer Validation & Preview
+    val maxPhotosReachedTemplate: String,
+    val maxPhotosTruncatedTemplate: String,
+    val maxPhotosAllowedTemplate: String,
+    val invalidYouTubeUrlError: String,
+    val titleRequiredCustomVideoError: String,
+    val titleRequiredPhotoPostError: String,
+    val atLeastOnePhotoRequiredError: String,
+    val unsupportedPostTypeError: String,
+    val checkRequiredFieldsError: String,
+    val youtubeVideoThumbnailDesc: String,
+    val youtubeVideoLabel: String,
+    val youtubeMetadataUnavailableNotice: String,
+    val postMediaPreviewDesc: String,
+    val untitledPostTitle: String,
+    val photosAttachedTemplate: String
+) {
+    fun categoryLabel(categoryKey: String): String = when (categoryKey.trim().lowercase()) {
+        "general" -> categoryGeneral
+        "academics" -> categoryAcademics
+        "events" -> categoryEvents
+        "sports" -> categorySports
+        "achievements" -> categoryAchievements
+        "campus life" -> categoryCampusLife
+        "announcement" -> categoryAnnouncement
+        else -> categoryKey
+    }
+
+    fun postTypeLabel(postType: String): String = when (postType) {
+        "YOUTUBE_DIRECT" -> postTypeYouTubeDirect
+        "ADMIN_CUSTOM_VIDEO" -> postTypeCustomVideo
+        "PHOTO" -> postTypePhoto
+        else -> postType
+    }
+
+    fun postsTabLabel(count: Int): String = postsTabTemplate.replace("{count}", count.toString())
+    fun highlightsTabLabel(count: Int): String = highlightsTabTemplate.replace("{count}", count.toString())
+    fun photoPostCountLabel(count: Int): String = photoPostCountTemplate.replace("{count}", count.toString())
+    fun highlightActiveBadge(hours: Long): String = highlightActiveBadgeTemplate.replace("{hours}", hours.toString())
+    fun deleteHighlightMsg(label: String): String = deleteHighlightMsgTemplate.replace("{label}", label)
+    fun postFallbackTitle(id: Long): String = postFallbackTitleTemplate.replace("{id}", id.toString())
+    fun highlightFallbackTitle(id: Long): String = highlightFallbackTitleTemplate.replace("{id}", id.toString())
+    fun highlightVideoIdTitle(videoId: String): String = highlightVideoIdTitleTemplate.replace("{id}", videoId)
+    fun youtubeVideoFallbackTitle(videoId: String): String = youtubeVideoFallbackTitleTemplate.replace("{id}", videoId)
+    fun youtubeShortFallbackTitle(videoId: String): String = youtubeShortFallbackTitleTemplate.replace("{id}", videoId)
+    fun updatedTimestampLabel(time: String): String = updatedTimestampTemplate.replace("{time}", time)
+    fun expiresTimestampLabel(time: String): String = expiresTimestampTemplate.replace("{time}", time)
+    fun photosMaxHeader(max: Int): String = photosMaxHeaderTemplate.replace("{max}", max.toString())
+    fun photoOneOfMaxLabel(max: Int): String = photoOneOfMaxTemplate.replace("{max}", max.toString())
+    fun photoIndexDesc(index: Int): String = photoIndexDescTemplate.replace("{index}", index.toString())
+    fun removePhotoIndexDesc(index: Int): String = removePhotoIndexDescTemplate.replace("{index}", index.toString())
+    fun selectedPhotoOfTotalLabel(index: Int, total: Int): String =
+        selectedPhotoOfTotalTemplate.replace("{index}", index.toString()).replace("{total}", total.toString())
+    fun maxPhotosReachedError(max: Int): String = maxPhotosReachedTemplate.replace("{max}", max.toString())
+    fun maxPhotosTruncatedError(max: Int): String = maxPhotosTruncatedTemplate.replace("{max}", max.toString())
+    fun maxPhotosAllowedError(max: Int): String = maxPhotosAllowedTemplate.replace("{max}", max.toString())
+    fun photosAttachedLabel(count: Int): String = photosAttachedTemplate.replace("{count}", count.toString())
+}
+
+@Immutable
 data class ManagementStrings(
     val language: AppLanguage,
     val auth: ManagementAuthStrings,
@@ -423,7 +591,8 @@ data class ManagementStrings(
     val staffMedia: ManagementStaffAndMediaStrings,
     val profileHero: ManagementProfileAndHeroStrings,
     val content: ManagementSectionEditorsStrings,
-    val mediaUi: ManagementUniversalMediaStrings
+    val mediaUi: ManagementUniversalMediaStrings,
+    val schoolFeed: ManagementSchoolFeedStrings
 ) {
     // Auth & Shell
     val portalTitle: String get() = auth.portalTitle
@@ -547,6 +716,8 @@ data class ManagementStrings(
     val cardPhotoGallery: String get() = dashboard.cardPhotoGallery
     val cardContactDetails: String get() = dashboard.cardContactDetails
     val cardSocialMedia: String get() = dashboard.cardSocialMedia
+    val cardSchoolPosts: String get() = dashboard.cardSchoolPosts
+    val cardSchoolHighlights: String get() = dashboard.cardSchoolHighlights
     val cardMediaStudio: String get() = dashboard.cardMediaStudio
     val cardStaffManagement: String get() = dashboard.cardStaffManagement
     val cardApprovalCenter: String get() = dashboard.cardApprovalCenter
@@ -591,6 +762,8 @@ data class ManagementStrings(
     val backendStatusUnconfiguredLabel: String get() = dashboard.backendStatusUnconfiguredLabel
     val backendStatusAutoBackupLabel: String get() = dashboard.backendStatusAutoBackupLabel
     val backendStatusRemoteSyncLabel: String get() = dashboard.backendStatusRemoteSyncLabel
+    val backendStatusAuthModeLabel: String get() = dashboard.backendStatusAuthModeLabel
+    val backendStatusTenantIdTemplate: String get() = dashboard.backendStatusTenantIdTemplate
     val globalSearchNoResultsTemplate: String get() = dashboard.globalSearchNoResultsTemplate
 
     // Staff Management
@@ -644,6 +817,12 @@ data class ManagementStrings(
     val mediaSizeStatsTemplate: String get() = staffMedia.mediaSizeStatsTemplate
     val mediaInvalidYouTubeError: String get() = staffMedia.mediaInvalidYouTubeError
     val mediaVideoTitleRequiredError: String get() = staffMedia.mediaVideoTitleRequiredError
+    val mediaEditMetadataBtn: String get() = staffMedia.mediaEditMetadataBtn
+    val mediaEditMetadataDialogTitle: String get() = staffMedia.mediaEditMetadataDialogTitle
+    val mediaTitleLabel: String get() = staffMedia.mediaTitleLabel
+    val mediaCategoryLabel: String get() = staffMedia.mediaCategoryLabel
+    val mediaTitleRequiredError: String get() = staffMedia.mediaTitleRequiredError
+    val mediaCategoryRequiredError: String get() = staffMedia.mediaCategoryRequiredError
     val photoAdjTitle: String get() = staffMedia.photoAdjTitle
     val photoAdjSubtitle: String get() = staffMedia.photoAdjSubtitle
     val photoAdjLivePreviewTitle: String get() = staffMedia.photoAdjLivePreviewTitle
@@ -813,6 +992,8 @@ data class ManagementStrings(
         ManagementSection.PHOTO_GALLERY -> cardPhotoGallery
         ManagementSection.CONTACT_DETAILS -> cardContactDetails
         ManagementSection.SOCIAL_MEDIA -> cardSocialMedia
+        ManagementSection.SCHOOL_POSTS -> cardSchoolPosts
+        ManagementSection.SCHOOL_HIGHLIGHTS -> cardSchoolHighlights
         ManagementSection.MEDIA_STUDIO -> cardMediaStudio
         ManagementSection.STAFF_MANAGEMENT -> cardStaffManagement
         ManagementSection.NOTIFICATIONS -> cardNotifications
@@ -879,6 +1060,8 @@ data class ManagementStrings(
         mediaUi.galleryManagePhotosBtnTemplate.replace("{count}", count.toString())
     fun galleryDetailTitle(albumTitle: String): String =
         mediaUi.galleryDetailTitleTemplate.replace("{album}", albumTitle)
+    fun backendStatusTenantId(tenantId: String): String =
+        backendStatusTenantIdTemplate.replace("{id}", tenantId)
 }
 
 fun managementStringsFor(language: AppLanguage): ManagementStrings = when (language) {
@@ -1002,6 +1185,8 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             cardPhotoGallery = "Photo Gallery",
             cardContactDetails = "Contact Details",
             cardSocialMedia = "Social Media",
+            cardSchoolPosts = "School Feed Posts",
+            cardSchoolHighlights = "School Highlights",
             cardMediaStudio = "Media Studio",
             cardStaffManagement = "Staff Management",
             cardApprovalCenter = "Approval Center",
@@ -1044,6 +1229,8 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             backendStatusUnconfiguredLabel = "Unconfigured",
             backendStatusAutoBackupLabel = "OS Auto Backup: Disabled for local DB, preferences, and PIN verifiers.",
             backendStatusRemoteSyncLabel = "Remote Cloud Sync & Push (FCM): Unconfigured",
+            backendStatusAuthModeLabel = "Authentication & RBAC",
+            backendStatusTenantIdTemplate = "Tenant ID: {id}",
             globalSearchNoResultsTemplate = "No matching permitted records found for \"{query}\"."
         ),
         staffMedia = ManagementStaffAndMediaStrings(
@@ -1095,6 +1282,12 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             mediaSizeStatsTemplate = "{mime} • {w}x{h} • Orig {orig}KB -> Opt {opt}KB",
             mediaInvalidYouTubeError = "Enter a valid YouTube URL (youtube.com or youtu.be).",
             mediaVideoTitleRequiredError = "Video title is required.",
+            mediaEditMetadataBtn = "Edit Details",
+            mediaEditMetadataDialogTitle = "Edit Image Metadata",
+            mediaTitleLabel = "Title *",
+            mediaCategoryLabel = "Category *",
+            mediaTitleRequiredError = "Title is required.",
+            mediaCategoryRequiredError = "Category is required.",
             photoAdjTitle = "Adjust Home Hero Banner Photo",
             photoAdjSubtitle = "Drag to reposition, pinch or use sliders to zoom. Your original photo is preserved untouched.",
             photoAdjLivePreviewTitle = "Live Home Hero Banner Preview",
@@ -1273,6 +1466,114 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             galleryCoverSubmittedStatus = "Album cover update submitted for approval.",
             galleryOrderUpdatedStatus = "Updated photo order.",
             galleryOrderSubmittedStatus = "Photo order update submitted for approval."
+        ),
+        schoolFeed = ManagementSchoolFeedStrings(
+            filterAll = "All",
+            filterDraftPending = "Draft / Pending",
+            filterArchived = "Archived",
+            filterActive24h = "Active (24h)",
+            filterExpired = "Expired",
+            allCategoriesLabel = "All Categories",
+            postsTabTemplate = "Posts ({count})",
+            highlightsTabTemplate = "Highlights 24h ({count})",
+            categoryGeneral = "General",
+            categoryAcademics = "Academics",
+            categoryEvents = "Events",
+            categorySports = "Sports",
+            categoryAchievements = "Achievements",
+            categoryCampusLife = "Campus Life",
+            categoryAnnouncement = "Announcement",
+            postTypeYouTubeDirect = "YouTube Direct",
+            postTypeCustomVideo = "Custom Video",
+            postTypePhoto = "Photo Post",
+            photoPostCountTemplate = "Photo Post ({count})",
+            statusArchived = "Archived",
+            pinnedBadge = "Pinned",
+            highlightActiveBadgeTemplate = "Active • {hours}h left",
+            highlightExpiredBadge = "Expired (Hidden in App)",
+            createSchoolPostDesc = "Create School Post",
+            add24hHighlightDesc = "Add 24h Highlight",
+            emptyPostsMessage = "No school feed posts yet. Tap + to compose a YouTube video or photo post.",
+            emptyFilteredPostsMessage = "No posts match the selected filter.",
+            createFirstPostBtn = "Create First Post",
+            highlightsInfoBanner = "Highlights display YouTube Shorts for 24 hours after publishing. Expiry only hides the Highlight in this app and never deletes or modifies the YouTube video.",
+            emptyHighlightsMessage = "No 24-hour YouTube Shorts Highlights yet. Tap + to add one.",
+            emptyFilteredHighlightsMessage = "No Highlights match the selected filter.",
+            addHighlightBtn = "Add Highlight",
+            deleteHighlightMsgTemplate = "Remove '{label}' from School Highlights? This will never delete or modify the YouTube video.",
+            postFallbackTitleTemplate = "School Post #{id}",
+            highlightFallbackTitleTemplate = "Highlight #{id}",
+            highlightVideoIdTitleTemplate = "Highlight ({id})",
+            schoolHighlightFallbackTitle = "School Highlight",
+            youtubeVideoFallbackTitleTemplate = "YouTube Video ({id})",
+            youtubeShortFallbackTitleTemplate = "YouTube Short ({id})",
+            postPreviewDesc = "Post preview",
+            updatedTimestampTemplate = "Updated {time}",
+            expiresTimestampTemplate = "Expires {time}",
+            pinPostDesc = "Pin post",
+            unpinPostDesc = "Unpin post",
+            archivePostDesc = "Archive post",
+            restoreArchivedPostDesc = "Restore archived post",
+            youtubeShortThumbnailDesc = "YouTube Short thumbnail",
+            editHighlightTitle = "Edit Highlight (24h)",
+            newHighlightTitle = "New Highlight (24h Short)",
+            highlightSubtitle = "Active for 24 hours after publishing",
+            invalidShortsUrlError = "Please enter a valid YouTube Shorts URL (https://www.youtube.com/shorts/...).",
+            changeSummaryUpdatedHighlight = "Updated 24h highlight",
+            changeSummaryAddedHighlight = "Added 24h highlight",
+            highlightComposerInfoBanner = "Enter a YouTube Shorts URL. Once published, it remains active for 24 hours and then hides automatically without affecting YouTube.",
+            youtubeShortsUrlLabel = "YouTube Shorts URL *",
+            onlyShortsAcceptedHint = "Only YouTube Shorts URLs (youtube.com/shorts/...) are accepted for Highlights.",
+            autoThumbnailPreviewHint = "Original YouTube thumbnail will be previewed automatically.",
+            highlightLabelOptional = "Highlight Label (Optional)",
+            highlightThumbnailPreviewTitle = "Highlight Thumbnail Preview",
+            refreshBtn = "Refresh",
+            youtubeShortsPreviewDesc = "YouTube Shorts thumbnail preview",
+            youtubeShortLabel = "YouTube Short",
+            editPostTitle = "Edit School Post",
+            newPostTitle = "New School Post",
+            postTypeSectionLabel = "Post Type",
+            categorySectionLabel = "Category",
+            youtubeDirectInfoBanner = "YouTube Direct Post uses only the YouTube link. Original title, description, and thumbnail are retrieved automatically when available; if offline, a clean fallback preview is kept without inventing text.",
+            youtubeVideoUrlLabel = "YouTube Video URL *",
+            youtubeVideoUrlPlaceholder = "https://youtu.be/... or https://www.youtube.com/watch?v=...",
+            youtubeUrlInvalidHint = "Enter a valid youtube.com/watch?v=, youtu.be/, shorts/, or embed/ link.",
+            youtubeUrlSupportedHint = "Supports standard watch links, youtu.be, Shorts, and embed links.",
+            youtubePreviewTitle = "YouTube Preview",
+            fetchingLabel = "Fetching...",
+            refreshInfoBtn = "Refresh Info",
+            postTitleLabel = "Post Title *",
+            descriptionLabel = "Description",
+            optionalCustomThumbnailLabel = "Optional Custom Thumbnail",
+            photosMaxHeaderTemplate = "Photos (Max {max})",
+            addPhotosBtn = "Add Photos",
+            addFromMediaStudioBtn = "Add from Media Studio",
+            photoOneOfMaxTemplate = "Photo 1 of {max}",
+            photoIndexDescTemplate = "Photo {index}",
+            removePhotoIndexDescTemplate = "Remove photo {index}",
+            movePhotoLeftDesc = "Move photo left",
+            moveEarlierBtn = "Move Earlier",
+            moveLaterBtn = "Move Later",
+            movePhotoRightDesc = "Move photo right",
+            selectedPhotoOfTotalTemplate = "Selected Photo {index} of {total}",
+            pinFeaturePostTitle = "Pin / Feature Post",
+            pinFeaturePostSubtitle = "Pinned posts stay at the top of the published school feed.",
+            changeSummaryOptionalLabel = "Change Summary (Optional)",
+            maxPhotosReachedTemplate = "Maximum of {max} photos reached.",
+            maxPhotosTruncatedTemplate = "Only {max} photos are allowed per post. Extra photos were skipped.",
+            maxPhotosAllowedTemplate = "Maximum of {max} photos allowed per Photo Post.",
+            invalidYouTubeUrlError = "Please enter a valid YouTube video URL.",
+            titleRequiredCustomVideoError = "Title is required for Custom Video Posts.",
+            titleRequiredPhotoPostError = "Title is required for Photo Posts.",
+            atLeastOnePhotoRequiredError = "Please add at least 1 photo for a Photo Post.",
+            unsupportedPostTypeError = "Unsupported post type.",
+            checkRequiredFieldsError = "Please check all required fields.",
+            youtubeVideoThumbnailDesc = "YouTube Video Thumbnail",
+            youtubeVideoLabel = "YouTube Video",
+            youtubeMetadataUnavailableNotice = "Original YouTube metadata could not be retrieved right now. Clean fallback preview retained without inventing content.",
+            postMediaPreviewDesc = "Post media preview",
+            untitledPostTitle = "Untitled Post",
+            photosAttachedTemplate = "{count} photos attached"
         )
     )
 
@@ -1396,6 +1697,8 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             cardPhotoGallery = "படத்தொகுப்பு",
             cardContactDetails = "தொடர்பு விவரங்கள்",
             cardSocialMedia = "சமூக ஊடகங்கள்",
+            cardSchoolPosts = "பள்ளி பதிவுகள்",
+            cardSchoolHighlights = "பள்ளி ஹைலைட்ஸ்",
             cardMediaStudio = "மீடியா ஸ்டுடியோ",
             cardStaffManagement = "பணியாளர் மேலாண்மை",
             cardApprovalCenter = "ஒப்புதல் மையம்",
@@ -1438,6 +1741,8 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             backendStatusUnconfiguredLabel = "கட்டமைக்கப்படவில்லை",
             backendStatusAutoBackupLabel = "OS தானியங்கி காப்பு: உள்ளூர் தரவுத்தளம், விருப்பங்கள் மற்றும் PIN சரிபார்ப்பிகளுக்கு முடக்கப்பட்டது.",
             backendStatusRemoteSyncLabel = "தொலைநிலை மேக ஒத்திசைவு & Push (FCM): கட்டமைக்கப்படவில்லை",
+            backendStatusAuthModeLabel = "அங்கீகாரம் & RBAC",
+            backendStatusTenantIdTemplate = "பள்ளி அடையாள எண்: {id}",
             globalSearchNoResultsTemplate = "\"{query}\" என்பதற்கான பொருந்தும் பதிவுகள் இல்லை."
         ),
         staffMedia = ManagementStaffAndMediaStrings(
@@ -1489,6 +1794,12 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             mediaSizeStatsTemplate = "{mime} • {w}x{h} • அசல் {orig}KB -> சுருக்கம் {opt}KB",
             mediaInvalidYouTubeError = "செல்லுபடியாகும் YouTube URL-ஐ உள்ளிடவும்.",
             mediaVideoTitleRequiredError = "வீடியோ தலைப்பு தேவை.",
+            mediaEditMetadataBtn = "விவரங்களைத் திருத்து",
+            mediaEditMetadataDialogTitle = "பட விவரங்களைத் திருத்து",
+            mediaTitleLabel = "தலைப்பு *",
+            mediaCategoryLabel = "வகை *",
+            mediaTitleRequiredError = "தலைப்பு தேவை.",
+            mediaCategoryRequiredError = "வகை தேவை.",
             photoAdjTitle = "முகப்பு பேனர் படத்தைச் சரிசெய்",
             photoAdjSubtitle = "நகர்த்த இழுக்கவும், பெரிதாக்க பிஞ்ச் அல்லது ஸ்லைடரைப் பயன்படுத்தவும். அசல் படம் பாதுகாப்பாக வைக்கப்படும்.",
             photoAdjLivePreviewTitle = "முகப்பு பேனர் நேரடி முன்னோட்டம்",
@@ -1667,6 +1978,114 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             galleryCoverSubmittedStatus = "ஆல்பம் அட்டைப்பட மாற்றம் ஒப்புதலுக்கு அனுப்பப்பட்டது.",
             galleryOrderUpdatedStatus = "படங்களின் வரிசை புதுப்பிக்கப்பட்டது.",
             galleryOrderSubmittedStatus = "பட வரிசை மாற்றம் ஒப்புதலுக்கு அனுப்பப்பட்டது."
+        ),
+        schoolFeed = ManagementSchoolFeedStrings(
+            filterAll = "அனைத்தும்",
+            filterDraftPending = "வரைவு / நிலுவை",
+            filterArchived = "காப்பகப்படுத்தப்பட்டது",
+            filterActive24h = "செயலில் (24 மணி)",
+            filterExpired = "காலாவதியானது",
+            allCategoriesLabel = "அனைத்து பிரிவுகள்",
+            postsTabTemplate = "பதிவுகள் ({count})",
+            highlightsTabTemplate = "சிறப்பம்சங்கள் 24மணி ({count})",
+            categoryGeneral = "பொது",
+            categoryAcademics = "கல்வி",
+            categoryEvents = "நிகழ்வுகள்",
+            categorySports = "விளையாட்டு",
+            categoryAchievements = "சாதனைகள்",
+            categoryCampusLife = "வளாக வாழ்க்கை",
+            categoryAnnouncement = "அறிவிப்பு",
+            postTypeYouTubeDirect = "நேரடி YouTube",
+            postTypeCustomVideo = "தனிப்பயன் வீடியோ",
+            postTypePhoto = "படப் பதிவு",
+            photoPostCountTemplate = "படப் பதிவு ({count})",
+            statusArchived = "காப்பகப்படுத்தப்பட்டது",
+            pinnedBadge = "பொருத்தப்பட்டது",
+            highlightActiveBadgeTemplate = "செயலில் • {hours}மணி மீதம்",
+            highlightExpiredBadge = "காலாவதியானது (செயலியில் மறைக்கப்பட்டது)",
+            createSchoolPostDesc = "பள்ளிப் பதிவை உருவாக்கு",
+            add24hHighlightDesc = "24 மணி சிறப்பம்சம் சேர்",
+            emptyPostsMessage = "பள்ளிப் பதிவுகள் இன்னும் இல்லை. YouTube வீடியோ அல்லது படப் பதிவை உருவாக்க + ஐத் தட்டவும்.",
+            emptyFilteredPostsMessage = "தேர்ந்தெடுக்கப்பட்ட வடிகட்டிக்குப் பொருந்தும் பதிவுகள் இல்லை.",
+            createFirstPostBtn = "முதல் பதிவை உருவாக்கு",
+            highlightsInfoBanner = "சிறப்பம்சங்கள் வெளியிடப்பட்ட பிறகு 24 மணி நேரம் YouTube Shorts-ஐக் காட்டும். காலாவதியாவது இந்தச் செயலியில் மட்டுமே மறைக்கும்; YouTube வீடியோவை ஒருபோதும் நீக்கவோ மாற்றவோ செய்யாது.",
+            emptyHighlightsMessage = "24 மணி நேர YouTube Shorts சிறப்பம்சங்கள் இன்னும் இல்லை. சேர்க்க + ஐத் தட்டவும்.",
+            emptyFilteredHighlightsMessage = "தேர்ந்தெடுக்கப்பட்ட வடிகட்டிக்குப் பொருந்தும் சிறப்பம்சங்கள் இல்லை.",
+            addHighlightBtn = "சிறப்பம்சம் சேர்",
+            deleteHighlightMsgTemplate = "'{label}' என்பதை பள்ளி சிறப்பம்சங்களிலிருந்து நீக்கவா? இது YouTube வீடியோவை ஒருபோதும் நீக்கவோ மாற்றவோ செய்யாது.",
+            postFallbackTitleTemplate = "பள்ளிப் பதிவு #{id}",
+            highlightFallbackTitleTemplate = "சிறப்பம்சம் #{id}",
+            highlightVideoIdTitleTemplate = "சிறப்பம்சம் ({id})",
+            schoolHighlightFallbackTitle = "பள்ளி சிறப்பம்சம்",
+            youtubeVideoFallbackTitleTemplate = "YouTube வீடியோ ({id})",
+            youtubeShortFallbackTitleTemplate = "YouTube ஷார்ட் ({id})",
+            postPreviewDesc = "பதிவு முன்னோட்டம்",
+            updatedTimestampTemplate = "புதுப்பிக்கப்பட்டது {time}",
+            expiresTimestampTemplate = "காலாவதியாகும் நேரம் {time}",
+            pinPostDesc = "பதிவைப் பொருத்து",
+            unpinPostDesc = "பதிவு பொருத்தத்தை நீக்கு",
+            archivePostDesc = "பதிவைக் காப்பகப்படுத்து",
+            restoreArchivedPostDesc = "காப்பகப் பதிவை மீட்டெடு",
+            youtubeShortThumbnailDesc = "YouTube ஷார்ட் சிறுபடம்",
+            editHighlightTitle = "சிறப்பம்சத்தைத் திருத்து (24மணி)",
+            newHighlightTitle = "புதிய சிறப்பம்சம் (24மணி ஷார்ட்)",
+            highlightSubtitle = "வெளியிடப்பட்ட பிறகு 24 மணி நேரம் செயலில் இருக்கும்",
+            invalidShortsUrlError = "செல்லுபடியாகும் YouTube Shorts இணைப்பை உள்ளிடவும் (https://www.youtube.com/shorts/...).",
+            changeSummaryUpdatedHighlight = "24 மணி சிறப்பம்சம் புதுப்பிக்கப்பட்டது",
+            changeSummaryAddedHighlight = "24 மணி சிறப்பம்சம் சேர்க்கப்பட்டது",
+            highlightComposerInfoBanner = "YouTube Shorts இணைப்பை உள்ளிடவும். வெளியிடப்பட்டதும் 24 மணி நேரம் செயலில் இருந்து, பின்னர் YouTube-ஐப் பாதிக்காமல் தானாக மறைந்துவிடும்.",
+            youtubeShortsUrlLabel = "YouTube Shorts இணைப்பு *",
+            onlyShortsAcceptedHint = "சிறப்பம்சங்களுக்கு YouTube Shorts இணைப்புகள் (youtube.com/shorts/...) மட்டுமே ஏற்கப்படும்.",
+            autoThumbnailPreviewHint = "அசல் YouTube சிறுபடம் தானாக முன்னோட்டமிடப்படும்.",
+            highlightLabelOptional = "சிறப்பம்சத் தலைப்பு (விருப்பம்)",
+            highlightThumbnailPreviewTitle = "சிறப்பம்ச சிறுபட முன்னோட்டம்",
+            refreshBtn = "புதுப்பி",
+            youtubeShortsPreviewDesc = "YouTube Shorts சிறுபட முன்னோட்டம்",
+            youtubeShortLabel = "YouTube ஷார்ட்",
+            editPostTitle = "பள்ளிப் பதிவைத் திருத்து",
+            newPostTitle = "புதிய பள்ளிப் பதிவு",
+            postTypeSectionLabel = "பதிவு வகை",
+            categorySectionLabel = "பிரிவு",
+            youtubeDirectInfoBanner = "நேரடி YouTube பதிவு YouTube இணைப்பை மட்டுமே பயன்படுத்துகிறது. அசல் தலைப்பு, விளக்கம் மற்றும் சிறுபடம் கிடைக்கும்போது தானாகப் பெறப்படும்; ஆஃப்லைனில் இருந்தால் புதிய உரையை உருவாக்காமல் தெளிவான மாற்று முன்னோட்டம் காட்டப்படும்.",
+            youtubeVideoUrlLabel = "YouTube வீடியோ இணைப்பு *",
+            youtubeVideoUrlPlaceholder = "https://youtu.be/... அல்லது https://www.youtube.com/watch?v=...",
+            youtubeUrlInvalidHint = "செல்லுபடியாகும் youtube.com/watch?v=, youtu.be/, shorts/, அல்லது embed/ இணைப்பை உள்ளிடவும்.",
+            youtubeUrlSupportedHint = "நிலையான watch இணைப்புகள், youtu.be, Shorts மற்றும் embed இணைப்புகள் ஆதரிக்கப்படுகின்றன.",
+            youtubePreviewTitle = "YouTube முன்னோட்டம்",
+            fetchingLabel = "பெறுகிறது...",
+            refreshInfoBtn = "தகவலைப் புதுப்பி",
+            postTitleLabel = "பதிவுத் தலைப்பு *",
+            descriptionLabel = "விளக்கம்",
+            optionalCustomThumbnailLabel = "விருப்பத் தனிப்பயன் சிறுபடம்",
+            photosMaxHeaderTemplate = "படங்கள் (அதிகபட்சம் {max})",
+            addPhotosBtn = "படங்களைச் சேர்",
+            addFromMediaStudioBtn = "மீடியா ஸ்டுடியோவிலிருந்து சேர்",
+            photoOneOfMaxTemplate = "படம் 1 / {max}",
+            photoIndexDescTemplate = "படம் {index}",
+            removePhotoIndexDescTemplate = "படம் {index} ஐ நீக்கு",
+            movePhotoLeftDesc = "படத்தை இடப்புறம் நகர்த்து",
+            moveEarlierBtn = "முன்னால் நகர்த்து",
+            moveLaterBtn = "பின்னால் நகர்த்து",
+            movePhotoRightDesc = "படத்தை வலப்புறம் நகர்த்து",
+            selectedPhotoOfTotalTemplate = "தேர்ந்தெடுக்கப்பட்ட படம் {index} / {total}",
+            pinFeaturePostTitle = "பதிவைப் பொருத்து / சிறப்பி",
+            pinFeaturePostSubtitle = "பொருத்தப்பட்ட பதிவுகள் வெளியிடப்பட்ட பள்ளிப் பதிவுகளின் மேல் பகுதியில் நிலைத்திருக்கும்.",
+            changeSummaryOptionalLabel = "மாற்றச் சுருக்கம் (விருப்பம்)",
+            maxPhotosReachedTemplate = "அதிகபட்சமாக {max} படங்கள் எட்டப்பட்டுவிட்டன.",
+            maxPhotosTruncatedTemplate = "ஒரு பதிவிற்கு {max} படங்கள் மட்டுமே அனுமதிக்கப்படும். கூடுதல் படங்கள் தவிர்க்கப்பட்டன.",
+            maxPhotosAllowedTemplate = "ஒரு படப் பதிவிற்கு அதிகபட்சம் {max} படங்கள் மட்டுமே அனுமதிக்கப்படும்.",
+            invalidYouTubeUrlError = "செல்லுபடியாகும் YouTube வீடியோ இணைப்பை உள்ளிடவும்.",
+            titleRequiredCustomVideoError = "தனிப்பயன் வீடியோ பதிவுகளுக்குத் தலைப்பு அவசியம்.",
+            titleRequiredPhotoPostError = "படப் பதிவுகளுக்குத் தலைப்பு அவசியம்.",
+            atLeastOnePhotoRequiredError = "படப் பதிவிற்கு குறைந்தது 1 படத்தைச் சேர்க்கவும்.",
+            unsupportedPostTypeError = "ஆதரிக்கப்படாத பதிவு வகை.",
+            checkRequiredFieldsError = "தேவையான அனைத்து புலங்களையும் சரிபார்க்கவும்.",
+            youtubeVideoThumbnailDesc = "YouTube வீடியோ சிறுபடம்",
+            youtubeVideoLabel = "YouTube வீடியோ",
+            youtubeMetadataUnavailableNotice = "அசல் YouTube விவரங்களை இப்போது பெற முடியவில்லை. எந்த உள்ளடக்கத்தையும் உருவாக்காமல் தெளிவான மாற்று முன்னோட்டம் தக்கவைக்கப்பட்டுள்ளது.",
+            postMediaPreviewDesc = "பதிவு ஊடக முன்னோட்டம்",
+            untitledPostTitle = "தலைப்பில்லாப் பதிவு",
+            photosAttachedTemplate = "{count} படங்கள் இணைக்கப்பட்டுள்ளன"
         )
     )
 
@@ -1790,6 +2209,8 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             cardPhotoGallery = "फ़ोटो गैलरी",
             cardContactDetails = "संपर्क विवरण",
             cardSocialMedia = "सोशल मीडिया",
+            cardSchoolPosts = "स्कूल फ़ीड पोस्ट",
+            cardSchoolHighlights = "स्कूल हाइलाइट्स",
             cardMediaStudio = "मीडिया स्टूडियो",
             cardStaffManagement = "स्टाफ़ प्रबंधन",
             cardApprovalCenter = "स्वीकृति केंद्र",
@@ -1832,6 +2253,8 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             backendStatusUnconfiguredLabel = "कॉन्फ़िगर नहीं",
             backendStatusAutoBackupLabel = "OS ऑटो बैकअप: स्थानीय डेटाबेस, प्राथमिकताओं और PIN सत्यापनकर्ता के लिए बंद है।",
             backendStatusRemoteSyncLabel = "रिमोट क्लाउड सिंक व पुश (FCM): कॉन्फ़िगर नहीं",
+            backendStatusAuthModeLabel = "प्रमाणीकरण व RBAC",
+            backendStatusTenantIdTemplate = "टेनेंट आईडी: {id}",
             globalSearchNoResultsTemplate = "\"{query}\" के लिए कोई अनुमत रिकॉर्ड नहीं मिला।"
         ),
         staffMedia = ManagementStaffAndMediaStrings(
@@ -1883,6 +2306,12 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             mediaSizeStatsTemplate = "{mime} • {w}x{h} • मूल {orig}KB -> अनुकूलित {opt}KB",
             mediaInvalidYouTubeError = "मान्य YouTube URL दर्ज करें (youtube.com या youtu.be)।",
             mediaVideoTitleRequiredError = "वीडियो शीर्षक आवश्यक है।",
+            mediaEditMetadataBtn = "विवरण संपादित करें",
+            mediaEditMetadataDialogTitle = "छवि मेटाडेटा संपादित करें",
+            mediaTitleLabel = "शीर्षक *",
+            mediaCategoryLabel = "श्रेणी *",
+            mediaTitleRequiredError = "शीर्षक आवश्यक है।",
+            mediaCategoryRequiredError = "श्रेणी आवश्यक है।",
             photoAdjTitle = "होम हीरो बैनर फ़ोटो समायोजित करें",
             photoAdjSubtitle = "स्थिति बदलने के लिए खींचें, ज़ूम करने के लिए पिंच या स्लाइडर का उपयोग करें। मूल फ़ोटो सुरक्षित रहेगी।",
             photoAdjLivePreviewTitle = "होम हीरो बैनर लाइव पूर्वावलोकन",
@@ -2061,6 +2490,114 @@ fun managementStringsFor(language: AppLanguage): ManagementStrings = when (langu
             galleryCoverSubmittedStatus = "एल्बम कवर अपडेट स्वीकृति के लिए भेजा गया।",
             galleryOrderUpdatedStatus = "फ़ोटो क्रम अपडेट किया गया।",
             galleryOrderSubmittedStatus = "फ़ोटो क्रम अपडेट स्वीकृति के लिए भेजा गया।"
+        ),
+        schoolFeed = ManagementSchoolFeedStrings(
+            filterAll = "सभी",
+            filterDraftPending = "ड्राफ़्ट / लंबित",
+            filterArchived = "संग्रहीत",
+            filterActive24h = "सक्रिय (24 घंटे)",
+            filterExpired = "समाप्त",
+            allCategoriesLabel = "सभी श्रेणियाँ",
+            postsTabTemplate = "पोस्ट ({count})",
+            highlightsTabTemplate = "झलकियाँ 24घं ({count})",
+            categoryGeneral = "सामान्य",
+            categoryAcademics = "शैक्षणिक",
+            categoryEvents = "कार्यक्रम",
+            categorySports = "खेल",
+            categoryAchievements = "उपलब्धियाँ",
+            categoryCampusLife = "परिसर जीवन",
+            categoryAnnouncement = "घोषणा",
+            postTypeYouTubeDirect = "डायरेक्ट YouTube",
+            postTypeCustomVideo = "कस्टम वीडियो",
+            postTypePhoto = "फ़ोटो पोस्ट",
+            photoPostCountTemplate = "फ़ोटो पोस्ट ({count})",
+            statusArchived = "संग्रहीत",
+            pinnedBadge = "पिन किया गया",
+            highlightActiveBadgeTemplate = "सक्रिय • {hours}घं शेष",
+            highlightExpiredBadge = "समाप्त (ऐप में छिपा हुआ)",
+            createSchoolPostDesc = "विद्यालय पोस्ट बनाएँ",
+            add24hHighlightDesc = "24 घंटे की झलक जोड़ें",
+            emptyPostsMessage = "अभी कोई विद्यालय फ़ीड पोस्ट नहीं है। YouTube वीडियो या फ़ोटो पोस्ट बनाने के लिए + दबाएँ।",
+            emptyFilteredPostsMessage = "चयनित फ़िल्टर से कोई पोस्ट मेल नहीं खाती।",
+            createFirstPostBtn = "पहली पोस्ट बनाएँ",
+            highlightsInfoBanner = "झलकियाँ प्रकाशित होने के बाद 24 घंटे तक YouTube Shorts दिखाती हैं। अवधि समाप्त होने पर यह केवल ऐप में छिप जाती है और YouTube वीडियो को कभी हटाती या बदलती नहीं है।",
+            emptyHighlightsMessage = "अभी कोई 24-घंटे की YouTube Shorts झलक नहीं है। जोड़ने के लिए + दबाएँ।",
+            emptyFilteredHighlightsMessage = "चयनित फ़िल्टर से कोई झलक मेल नहीं खाती।",
+            addHighlightBtn = "झलक जोड़ें",
+            deleteHighlightMsgTemplate = "क्या '{label}' को विद्यालय झलकियों से हटाएँ? इससे YouTube वीडियो कभी नहीं हटेगा या बदलेगा।",
+            postFallbackTitleTemplate = "विद्यालय पोस्ट #{id}",
+            highlightFallbackTitleTemplate = "झलक #{id}",
+            highlightVideoIdTitleTemplate = "झलक ({id})",
+            schoolHighlightFallbackTitle = "विद्यालय झलक",
+            youtubeVideoFallbackTitleTemplate = "YouTube वीडियो ({id})",
+            youtubeShortFallbackTitleTemplate = "YouTube शॉर्ट ({id})",
+            postPreviewDesc = "पोस्ट पूर्वावलोकन",
+            updatedTimestampTemplate = "अपडेट किया गया {time}",
+            expiresTimestampTemplate = "समाप्त होगा {time}",
+            pinPostDesc = "पोस्ट पिन करें",
+            unpinPostDesc = "पोस्ट अनपिन करें",
+            archivePostDesc = "पोस्ट संग्रहीत करें",
+            restoreArchivedPostDesc = "संग्रहीत पोस्ट पुनर्स्थापित करें",
+            youtubeShortThumbnailDesc = "YouTube शॉर्ट थंबनेल",
+            editHighlightTitle = "झलक संपादित करें (24घं)",
+            newHighlightTitle = "नई झलक (24घं शॉर्ट)",
+            highlightSubtitle = "प्रकाशित होने के बाद 24 घंटे तक सक्रिय",
+            invalidShortsUrlError = "कृपया एक मान्य YouTube Shorts URL दर्ज करें (https://www.youtube.com/shorts/...)।",
+            changeSummaryUpdatedHighlight = "24 घंटे की झलक अपडेट की गई",
+            changeSummaryAddedHighlight = "24 घंटे की झलक जोड़ी गई",
+            highlightComposerInfoBanner = "YouTube Shorts URL दर्ज करें। प्रकाशित होने पर यह 24 घंटे सक्रिय रहता है और फिर YouTube को प्रभावित किए बिना स्वतः छिप जाता है।",
+            youtubeShortsUrlLabel = "YouTube Shorts URL *",
+            onlyShortsAcceptedHint = "झलकियों के लिए केवल YouTube Shorts URL (youtube.com/shorts/...) स्वीकार किए जाते हैं।",
+            autoThumbnailPreviewHint = "मूल YouTube थंबनेल का पूर्वावलोकन अपने-आप दिखाई देगा।",
+            highlightLabelOptional = "झलक शीर्षक (वैकल्पिक)",
+            highlightThumbnailPreviewTitle = "झलक थंबनेल पूर्वावलोकन",
+            refreshBtn = "रीफ़्रेश करें",
+            youtubeShortsPreviewDesc = "YouTube Shorts थंबनेल पूर्वावलोकन",
+            youtubeShortLabel = "YouTube शॉर्ट",
+            editPostTitle = "विद्यालय पोस्ट संपादित करें",
+            newPostTitle = "नई विद्यालय पोस्ट",
+            postTypeSectionLabel = "पोस्ट प्रकार",
+            categorySectionLabel = "श्रेणी",
+            youtubeDirectInfoBanner = "डायरेक्ट YouTube पोस्ट केवल YouTube लिंक का उपयोग करती है। उपलब्ध होने पर मूल शीर्षक, विवरण और थंबनेल अपने-आप प्राप्त होते हैं; ऑफ़लाइन होने पर बिना कोई नया पाठ जोड़े स्वच्छ फ़ॉलबैक पूर्वावलोकन रखा जाता है।",
+            youtubeVideoUrlLabel = "YouTube वीडियो URL *",
+            youtubeVideoUrlPlaceholder = "https://youtu.be/... या https://www.youtube.com/watch?v=...",
+            youtubeUrlInvalidHint = "मान्य youtube.com/watch?v=, youtu.be/, shorts/, या embed/ लिंक दर्ज करें।",
+            youtubeUrlSupportedHint = "मानक watch लिंक, youtu.be, Shorts और embed लिंक समर्थित हैं।",
+            youtubePreviewTitle = "YouTube पूर्वावलोकन",
+            fetchingLabel = "प्राप्त किया जा रहा है...",
+            refreshInfoBtn = "जानकारी रीफ़्रेश करें",
+            postTitleLabel = "पोस्ट शीर्षक *",
+            descriptionLabel = "विवरण",
+            optionalCustomThumbnailLabel = "वैकल्पिक कस्टम थंबनेल",
+            photosMaxHeaderTemplate = "फ़ोटो (अधिकतम {max})",
+            addPhotosBtn = "फ़ोटो जोड़ें",
+            addFromMediaStudioBtn = "मीडिया स्टूडियो से जोड़ें",
+            photoOneOfMaxTemplate = "फ़ोटो 1 / {max}",
+            photoIndexDescTemplate = "फ़ोटो {index}",
+            removePhotoIndexDescTemplate = "फ़ोटो {index} हटाएँ",
+            movePhotoLeftDesc = "फ़ोटो बाएँ ले जाएँ",
+            moveEarlierBtn = "पहले लाएँ",
+            moveLaterBtn = "बाद में ले जाएँ",
+            movePhotoRightDesc = "फ़ोटो दाएँ ले जाएँ",
+            selectedPhotoOfTotalTemplate = "चयनित फ़ोटो {index} / {total}",
+            pinFeaturePostTitle = "पोस्ट पिन / फ़ीचर करें",
+            pinFeaturePostSubtitle = "पिन की गई पोस्ट प्रकाशित विद्यालय फ़ीड में सबसे ऊपर रहती हैं।",
+            changeSummaryOptionalLabel = "परिवर्तन सारांश (वैकल्पिक)",
+            maxPhotosReachedTemplate = "अधिकतम {max} फ़ोटो की सीमा पूरी हो गई है।",
+            maxPhotosTruncatedTemplate = "प्रति पोस्ट केवल {max} फ़ोटो की अनुमति है। अतिरिक्त फ़ोटो छोड़ दी गईं।",
+            maxPhotosAllowedTemplate = "प्रति फ़ोटो पोस्ट अधिकतम {max} फ़ोटो की अनुमति है।",
+            invalidYouTubeUrlError = "कृपया एक मान्य YouTube वीडियो URL दर्ज करें।",
+            titleRequiredCustomVideoError = "कस्टम वीडियो पोस्ट के लिए शीर्षक आवश्यक है।",
+            titleRequiredPhotoPostError = "फ़ोटो पोस्ट के लिए शीर्षक आवश्यक है।",
+            atLeastOnePhotoRequiredError = "कृपया फ़ोटो पोस्ट के लिए कम से कम 1 फ़ोटो जोड़ें।",
+            unsupportedPostTypeError = "असमर्थित पोस्ट प्रकार।",
+            checkRequiredFieldsError = "कृपया सभी आवश्यक फ़ील्ड जाँचें।",
+            youtubeVideoThumbnailDesc = "YouTube वीडियो थंबनेल",
+            youtubeVideoLabel = "YouTube वीडियो",
+            youtubeMetadataUnavailableNotice = "मूल YouTube मेटाडेटा अभी प्राप्त नहीं किया जा सका। बिना किसी सामग्री को जोड़े स्वच्छ फ़ॉलबैक पूर्वावलोकन रखा गया है।",
+            postMediaPreviewDesc = "पोस्ट मीडिया पूर्वावलोकन",
+            untitledPostTitle = "शीर्षकहीन पोस्ट",
+            photosAttachedTemplate = "{count} फ़ोटो संलग्न"
         )
     )
 }

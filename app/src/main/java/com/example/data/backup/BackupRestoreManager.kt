@@ -15,12 +15,20 @@ import com.example.data.local.entity.ManagementAccountEntity
 import com.example.data.local.entity.ManagementRole
 import com.example.data.local.entity.ManagementSection
 import com.example.data.local.entity.MediaStudioItemEntity
+import com.example.data.local.entity.SchoolHighlightEntity
+import com.example.data.local.entity.SchoolPostCategory
+import com.example.data.local.entity.SchoolPostEntity
+import com.example.data.local.entity.SchoolPostStatus
+import com.example.data.local.entity.SchoolPostType
 import com.example.data.local.entity.StaffPermissionEntity
+import com.example.data.local.entity.SyncMetadataDefaults
 import com.example.data.local.entity.VersionHistoryEntity
 import com.example.data.preferences.UserPreferencesRepository
 import com.example.data.preferences.UserPreferencesState
 import com.example.data.repository.ContentSnapshotSerializer
+import com.example.data.repository.ContentSnapshotSerializer.optNullableLong
 import com.example.data.repository.ContentSnapshotSerializer.optNullableString
+import com.example.data.repository.ContentSnapshotSerializer.putSyncMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -66,7 +74,8 @@ class BackupRestoreManager(
     companion object {
         private val MAGIC_HEADER = "CHV_BAK1".toByteArray(Charsets.US_ASCII)
         private const val FORMAT_VERSION = 1
-        private const val CURRENT_SCHEMA_VERSION = 4
+        const val CURRENT_SCHEMA_VERSION = 6
+        private const val MIN_DIGEST_REQUIRED_SCHEMA_VERSION = 5
         private const val PBKDF2_ITERATIONS = 120_000
         private const val SALT_BYTES = 16
         private const val IV_BYTES = 12
@@ -83,7 +92,8 @@ class BackupRestoreManager(
             "coverMediaUri",
             "mediaUri",
             "originalUri",
-            "optimizedUri"
+            "optimizedUri",
+            "customThumbnailUri"
         )
     }
 
@@ -145,6 +155,7 @@ class BackupRestoreManager(
                 require(snapshot.has("schoolProfile") && snapshot.has("managementAccounts")) {
                     "Backup snapshot is incomplete or corrupted."
                 }
+                parseAndValidateManagementAccounts(snapshot)
 
                 BackupPreviewInfo(
                     formatVersion = manifest.optInt("formatVersion", FORMAT_VERSION),
@@ -250,11 +261,29 @@ class BackupRestoreManager(
                 }
                 database.invalidationTracker.refreshVersionsAsync()
 
+                val restoredPosts = database.schoolPostDao().getAllPostsOnce()
+                val restoredPostIds = restoredPosts
+                    .asSequence()
+                    .map { it.id }
+                    .toSet()
+                val restoredPostRemoteIds = restoredPosts
+                    .asSequence()
+                    .map { it.remoteId }
+                    .toSet()
+                val reconciledLikedIds = previousPrefs.likedPostIds.intersect(restoredPostIds)
+                val reconciledBookmarkedIds = previousPrefs.bookmarkedPostIds.intersect(restoredPostIds)
+                val reconciledLikedRemoteIds = previousPrefs.likedPostRemoteIds.intersect(restoredPostRemoteIds)
+                val reconciledBookmarkedRemoteIds = previousPrefs.bookmarkedPostRemoteIds.intersect(restoredPostRemoteIds)
+
                 preferencesRepository.restorePreferences(
                     language = AppLanguage.fromCode(parsedSnapshot.languageCode),
                     isOnboarded = parsedSnapshot.isLanguageSelectedOnLaunch,
                     themeMode = AppThemeMode.fromKey(parsedSnapshot.themeModeKey),
-                    deviceAlertsEnabled = parsedSnapshot.deviceAlertsEnabled ?: previousPrefs.deviceAlertsEnabled
+                    deviceAlertsEnabled = parsedSnapshot.deviceAlertsEnabled ?: previousPrefs.deviceAlertsEnabled,
+                    likedPostIds = reconciledLikedIds,
+                    bookmarkedPostIds = reconciledBookmarkedIds,
+                    likedPostRemoteIds = reconciledLikedRemoteIds,
+                    bookmarkedPostRemoteIds = reconciledBookmarkedRemoteIds
                 )
 
                 rollbackMediaDir.deleteRecursively()
@@ -271,7 +300,9 @@ class BackupRestoreManager(
                         parsedSnapshot.transportRoutes.size +
                         parsedSnapshot.news.size +
                         parsedSnapshot.announcements.size +
-                        parsedSnapshot.socialLinks.size,
+                        parsedSnapshot.socialLinks.size +
+                        parsedSnapshot.schoolPosts.size +
+                        parsedSnapshot.schoolHighlights.size,
                     galleryItemCount = parsedSnapshot.galleryAlbums.size + parsedSnapshot.galleryMedia.size + parsedSnapshot.heroPhotos.size,
                     mediaStudioCount = parsedSnapshot.mediaStudioItems.size,
                     mediaFileCount = entries.keys.count { it.startsWith(MEDIA_PREFIX) && !it.endsWith("/") },
@@ -293,7 +324,11 @@ class BackupRestoreManager(
                     language = previousPrefs.selectedLanguage,
                     isOnboarded = previousPrefs.isLanguageSelectedOnLaunch,
                     themeMode = previousPrefs.themeMode,
-                    deviceAlertsEnabled = previousPrefs.deviceAlertsEnabled
+                    deviceAlertsEnabled = previousPrefs.deviceAlertsEnabled,
+                    likedPostIds = previousPrefs.likedPostIds,
+                    bookmarkedPostIds = previousPrefs.bookmarkedPostIds,
+                    likedPostRemoteIds = previousPrefs.likedPostRemoteIds,
+                    bookmarkedPostRemoteIds = previousPrefs.bookmarkedPostRemoteIds
                 )
                 throw t
             }
@@ -322,6 +357,8 @@ class BackupRestoreManager(
         val mediaStudio = database.mediaStudioDao().getAllOnce()
         val activityLogs = database.activityLogDao().getAllOnce()
         val notifications = database.localNotificationDao().getAllOnce()
+        val schoolPosts = database.schoolPostDao().getAllPostsOnce()
+        val schoolHighlights = database.schoolHighlightDao().getAllHighlightsOnce()
 
         val root = JSONObject().apply {
             put("preferences", JSONObject().apply {
@@ -345,6 +382,8 @@ class BackupRestoreManager(
             put("galleryAlbums", JSONArray().apply { albums.forEach { put(JSONObject(ContentSnapshotSerializer.galleryAlbumToJson(it))) } })
             put("galleryMedia", JSONArray().apply { galleryMedia.forEach { put(JSONObject(ContentSnapshotSerializer.galleryMediaToJson(it))) } })
             put("socialLinks", JSONArray().apply { socialLinks.forEach { put(JSONObject(ContentSnapshotSerializer.socialToJson(it))) } })
+            put("schoolPosts", JSONArray().apply { schoolPosts.forEach { put(schoolPostToJson(it)) } })
+            put("schoolHighlights", JSONArray().apply { schoolHighlights.forEach { put(schoolHighlightToJson(it)) } })
             put("managementAccounts", JSONArray().apply { accounts.forEach { put(accountToJson(it)) } })
             put("staffPermissions", JSONArray().apply { permissions.forEach { put(permissionToJson(it)) } })
             put("contentApprovals", JSONArray().apply { approvals.forEach { put(approvalToJson(it)) } })
@@ -363,7 +402,7 @@ class BackupRestoreManager(
             appVersionName = BuildConfig.VERSION_NAME,
             exportedAtMillis = System.currentTimeMillis(),
             accountCount = accounts.size,
-            contentRecordCount = academics.size + courses.size + facilities.size + routes.size + news.size + announcements.size + socialLinks.size,
+            contentRecordCount = academics.size + courses.size + facilities.size + routes.size + news.size + announcements.size + socialLinks.size + schoolPosts.size + schoolHighlights.size,
             galleryItemCount = albums.size + galleryMedia.size + heroPhotos.size,
             mediaStudioCount = mediaStudio.size,
             mediaFileCount = mediaFiles.size,
@@ -520,7 +559,7 @@ class BackupRestoreManager(
         schemaVersion: Int
     ): String {
         val actualDigest = computeSha256Hex(snapshotStr.toByteArray(Charsets.UTF_8))
-        val expectedDigest = if (schemaVersion >= CURRENT_SCHEMA_VERSION) {
+        val expectedDigest = if (schemaVersion >= MIN_DIGEST_REQUIRED_SCHEMA_VERSION) {
             manifest.optNullableString("snapshotSha256")
         } else {
             null
@@ -559,10 +598,35 @@ class BackupRestoreManager(
         val versionHistory: List<VersionHistoryEntity>,
         val mediaStudioItems: List<MediaStudioItemEntity>,
         val activityLogs: List<ActivityLogEntity>,
-        val notifications: List<LocalNotificationEntity>
+        val notifications: List<LocalNotificationEntity>,
+        val schoolPosts: List<SchoolPostEntity>,
+        val schoolHighlights: List<SchoolHighlightEntity>
     )
 
+    private fun parseAndValidateManagementAccounts(snapshot: JSONObject): List<ManagementAccountEntity> {
+        val accountsArray = snapshot.optJSONArray("managementAccounts")
+            ?: throw IllegalArgumentException("Backup snapshot is missing management accounts.")
+        val accounts = accountsArray.mapObjects { accountFromJson(it) }
+        val hasActiveMasterAdmin = accounts.any { account ->
+            account.role == ManagementRole.MASTER_ADMIN &&
+                account.isActive &&
+                account.username.isNotBlank() &&
+                account.pinSaltBase64.isNotBlank() &&
+                account.pinVerifierBase64.isNotBlank()
+        }
+        if (!hasActiveMasterAdmin) {
+            throw IllegalArgumentException(
+                "Backup snapshot must contain at least one active Master Admin account."
+            )
+        }
+        return accounts
+    }
+
     private fun parseSnapshot(root: JSONObject): ParsedSnapshot {
+        require(root.has("schoolProfile") && root.has("managementAccounts")) {
+            "Backup snapshot is incomplete or corrupted."
+        }
+        val accounts = parseAndValidateManagementAccounts(root)
         val prefsObj = root.optJSONObject("preferences")
         return ParsedSnapshot(
             languageCode = prefsObj?.optString("selectedLanguage", "en") ?: "en",
@@ -584,13 +648,15 @@ class BackupRestoreManager(
             galleryAlbums = root.optJSONArray("galleryAlbums").mapObjects { ContentSnapshotSerializer.galleryAlbumFromJson(it.toString(), publishNow = false) },
             galleryMedia = root.optJSONArray("galleryMedia").mapObjects { ContentSnapshotSerializer.galleryMediaFromJson(it.toString(), publishNow = false) },
             socialLinks = root.optJSONArray("socialLinks").mapObjects { ContentSnapshotSerializer.socialFromJson(it.toString(), publishNow = false) },
-            accounts = root.optJSONArray("managementAccounts").mapObjects { accountFromJson(it) },
+            accounts = accounts,
             permissions = root.optJSONArray("staffPermissions").mapObjects { permissionFromJson(it) },
             approvals = root.optJSONArray("contentApprovals").mapObjects { approvalFromJson(it) },
             versionHistory = root.optJSONArray("versionHistory").mapObjects { versionFromJson(it) },
             mediaStudioItems = root.optJSONArray("mediaStudioItems").mapObjects { mediaStudioFromJson(it) },
             activityLogs = root.optJSONArray("activityLogs").mapObjects { activityLogFromJson(it) },
-            notifications = root.optJSONArray("localNotifications").mapObjects { notificationFromJson(it) }
+            notifications = root.optJSONArray("localNotifications").mapObjects { notificationFromJson(it) },
+            schoolPosts = root.optJSONArray("schoolPosts").mapObjects { schoolPostFromJson(it) },
+            schoolHighlights = root.optJSONArray("schoolHighlights").mapObjects { schoolHighlightFromJson(it) }
         )
     }
 
@@ -620,6 +686,8 @@ class BackupRestoreManager(
         db.execSQL("DELETE FROM media_studio_items")
         db.execSQL("DELETE FROM activity_logs")
         db.execSQL("DELETE FROM local_notifications")
+        db.execSQL("DELETE FROM school_posts")
+        db.execSQL("DELETE FROM school_highlights")
 
         database.schoolProfileDao().upsertProfile(
             s.profile.copy(
@@ -659,6 +727,18 @@ class BackupRestoreManager(
             )
         }
         s.socialLinks.forEach { database.socialMediaDao().upsert(it) }
+        s.schoolPosts.forEach { post ->
+            val remappedPhotos = SchoolPostEntity.encodePhotoUris(
+                post.photoUris().map { uri -> remapMediaUri(uri, liveMediaDir) }
+            )
+            database.schoolPostDao().upsert(
+                post.copy(
+                    customThumbnailUri = post.customThumbnailUri?.let { uri -> remapMediaUri(uri, liveMediaDir) },
+                    photoUrisJson = remappedPhotos
+                )
+            )
+        }
+        s.schoolHighlights.forEach { database.schoolHighlightDao().upsert(it) }
 
         s.accounts.forEach { database.managementAccountDao().insertAccount(it) }
         if (s.permissions.isNotEmpty()) database.managementAccountDao().upsertPermissions(s.permissions)
@@ -886,25 +966,35 @@ class BackupRestoreManager(
         putOpt("reviewedByName", a.reviewedByName)
         putOpt("reviewedAtMillis", a.reviewedAtMillis)
         putOpt("rejectionReason", a.rejectionReason)
+        putSyncMetadata(a.remoteId, a.tenantId, a.syncState, a.serverUpdatedAtMillis, a.deletedAtMillis)
     }
 
-    private fun approvalFromJson(o: JSONObject): ContentApprovalEntity = ContentApprovalEntity(
-        id = o.getLong("id"),
-        sectionKey = o.getString("sectionKey"),
-        targetRecordId = o.optLong("targetRecordId", 0L),
-        recordTitle = o.getString("recordTitle"),
-        previousSnapshotJson = o.optNullableString("previousSnapshotJson"),
-        proposedPayloadJson = o.getString("proposedPayloadJson"),
-        changeSummary = o.getString("changeSummary"),
-        submittedByAccountId = o.getLong("submittedByAccountId"),
-        submittedByName = o.getString("submittedByName"),
-        submittedAtMillis = o.optLong("submittedAtMillis", 0L),
-        status = o.getString("status"),
-        reviewedByAccountId = if (o.has("reviewedByAccountId") && !o.isNull("reviewedByAccountId")) o.getLong("reviewedByAccountId") else null,
-        reviewedByName = o.optNullableString("reviewedByName"),
-        reviewedAtMillis = if (o.has("reviewedAtMillis") && !o.isNull("reviewedAtMillis")) o.getLong("reviewedAtMillis") else null,
-        rejectionReason = o.optNullableString("rejectionReason")
-    )
+    private fun approvalFromJson(o: JSONObject): ContentApprovalEntity {
+        val id = o.getLong("id")
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        return ContentApprovalEntity(
+            id = id,
+            sectionKey = o.getString("sectionKey"),
+            targetRecordId = o.optLong("targetRecordId", 0L),
+            recordTitle = o.getString("recordTitle"),
+            previousSnapshotJson = o.optNullableString("previousSnapshotJson"),
+            proposedPayloadJson = o.getString("proposedPayloadJson"),
+            changeSummary = o.getString("changeSummary"),
+            submittedByAccountId = o.getLong("submittedByAccountId"),
+            submittedByName = o.getString("submittedByName"),
+            submittedAtMillis = o.optLong("submittedAtMillis", 0L),
+            status = o.getString("status"),
+            reviewedByAccountId = if (o.has("reviewedByAccountId") && !o.isNull("reviewedByAccountId")) o.getLong("reviewedByAccountId") else null,
+            reviewedByName = o.optNullableString("reviewedByName"),
+            reviewedAtMillis = if (o.has("reviewedAtMillis") && !o.isNull("reviewedAtMillis")) o.getLong("reviewedAtMillis") else null,
+            rejectionReason = o.optNullableString("rejectionReason"),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "content_approvals", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
+        )
+    }
 
     private fun versionToJson(v: VersionHistoryEntity): JSONObject = JSONObject().apply {
         put("id", v.id)
@@ -919,22 +1009,31 @@ class BackupRestoreManager(
         put("changedAtMillis", v.changedAtMillis)
         put("changeSummary", v.changeSummary)
         put("approvalStatus", v.approvalStatus)
+        putSyncMetadata(v.remoteId, v.tenantId, v.syncState, v.serverUpdatedAtMillis, includeSoftDelete = false)
     }
 
-    private fun versionFromJson(o: JSONObject): VersionHistoryEntity = VersionHistoryEntity(
-        id = o.getLong("id"),
-        sectionKey = o.getString("sectionKey"),
-        recordId = o.getLong("recordId"),
-        versionNumber = o.getInt("versionNumber"),
-        recordTitle = o.getString("recordTitle"),
-        previousContentJson = o.optNullableString("previousContentJson"),
-        contentSnapshotJson = o.getString("contentSnapshotJson"),
-        changedByAccountId = o.getLong("changedByAccountId"),
-        changedByName = o.getString("changedByName"),
-        changedAtMillis = o.optLong("changedAtMillis", 0L),
-        changeSummary = o.getString("changeSummary"),
-        approvalStatus = o.getString("approvalStatus")
-    )
+    private fun versionFromJson(o: JSONObject): VersionHistoryEntity {
+        val id = o.getLong("id")
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        return VersionHistoryEntity(
+            id = id,
+            sectionKey = o.getString("sectionKey"),
+            recordId = o.getLong("recordId"),
+            versionNumber = o.getInt("versionNumber"),
+            recordTitle = o.getString("recordTitle"),
+            previousContentJson = o.optNullableString("previousContentJson"),
+            contentSnapshotJson = o.getString("contentSnapshotJson"),
+            changedByAccountId = o.getLong("changedByAccountId"),
+            changedByName = o.getString("changedByName"),
+            changedAtMillis = o.optLong("changedAtMillis", 0L),
+            changeSummary = o.getString("changeSummary"),
+            approvalStatus = o.getString("approvalStatus"),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "version_history", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis")
+        )
+    }
 
     private fun mediaStudioToJson(m: MediaStudioItemEntity): JSONObject = JSONObject().apply {
         put("id", m.id)
@@ -955,28 +1054,38 @@ class BackupRestoreManager(
         put("approvalStatus", m.approvalStatus)
         put("createdByName", m.createdByName)
         put("createdAtMillis", m.createdAtMillis)
+        putSyncMetadata(m.remoteId, m.tenantId, m.syncState, m.serverUpdatedAtMillis, m.deletedAtMillis)
     }
 
-    private fun mediaStudioFromJson(o: JSONObject): MediaStudioItemEntity = MediaStudioItemEntity(
-        id = o.getLong("id"),
-        mediaKind = o.getString("mediaKind"),
-        title = o.getString("title"),
-        caption = o.optNullableString("caption"),
-        categoryOrAlbum = o.optString("categoryOrAlbum", "Campus"),
-        originalUri = o.getString("originalUri"),
-        optimizedUri = o.optNullableString("optimizedUri"),
-        mimeType = o.getString("mimeType"),
-        widthPx = o.optInt("widthPx", 0),
-        heightPx = o.optInt("heightPx", 0),
-        fileSizeBytes = o.optLong("fileSizeBytes", 0L),
-        optimizedSizeBytes = o.optLong("optimizedSizeBytes", 0L),
-        assignedSectionsCsv = o.optString("assignedSectionsCsv", ""),
-        isFeatured = o.optBoolean("isFeatured", false),
-        displayOrder = o.optInt("displayOrder", 0),
-        approvalStatus = o.optString("approvalStatus", "PUBLISHED"),
-        createdByName = o.optString("createdByName", "Admin"),
-        createdAtMillis = o.optLong("createdAtMillis", 0L)
-    )
+    private fun mediaStudioFromJson(o: JSONObject): MediaStudioItemEntity {
+        val id = o.getLong("id")
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        return MediaStudioItemEntity(
+            id = id,
+            mediaKind = o.getString("mediaKind"),
+            title = o.getString("title"),
+            caption = o.optNullableString("caption"),
+            categoryOrAlbum = o.optString("categoryOrAlbum", "Campus"),
+            originalUri = o.getString("originalUri"),
+            optimizedUri = o.optNullableString("optimizedUri"),
+            mimeType = o.getString("mimeType"),
+            widthPx = o.optInt("widthPx", 0),
+            heightPx = o.optInt("heightPx", 0),
+            fileSizeBytes = o.optLong("fileSizeBytes", 0L),
+            optimizedSizeBytes = o.optLong("optimizedSizeBytes", 0L),
+            assignedSectionsCsv = o.optString("assignedSectionsCsv", ""),
+            isFeatured = o.optBoolean("isFeatured", false),
+            displayOrder = o.optInt("displayOrder", 0),
+            approvalStatus = o.optString("approvalStatus", "PUBLISHED"),
+            createdByName = o.optString("createdByName", "Admin"),
+            createdAtMillis = o.optLong("createdAtMillis", 0L),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "media_studio_items", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
+        )
+    }
 
     private fun activityLogToJson(l: ActivityLogEntity): JSONObject = JSONObject().apply {
         put("id", l.id)
@@ -988,19 +1097,28 @@ class BackupRestoreManager(
         put("recordRef", l.recordRef)
         put("details", l.details)
         put("timestampMillis", l.timestampMillis)
+        putSyncMetadata(l.remoteId, l.tenantId, l.syncState, l.serverUpdatedAtMillis, includeSoftDelete = false)
     }
 
-    private fun activityLogFromJson(o: JSONObject): ActivityLogEntity = ActivityLogEntity(
-        id = o.getLong("id"),
-        actionType = o.getString("actionType"),
-        actorAccountId = if (o.has("actorAccountId") && !o.isNull("actorAccountId")) o.getLong("actorAccountId") else null,
-        actorName = o.getString("actorName"),
-        actorRole = o.getString("actorRole"),
-        sectionKey = o.getString("sectionKey"),
-        recordRef = o.getString("recordRef"),
-        details = o.getString("details"),
-        timestampMillis = o.optLong("timestampMillis", 0L)
-    )
+    private fun activityLogFromJson(o: JSONObject): ActivityLogEntity {
+        val id = o.getLong("id")
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        return ActivityLogEntity(
+            id = id,
+            actionType = o.getString("actionType"),
+            actorAccountId = if (o.has("actorAccountId") && !o.isNull("actorAccountId")) o.getLong("actorAccountId") else null,
+            actorName = o.getString("actorName"),
+            actorRole = o.getString("actorRole"),
+            sectionKey = o.getString("sectionKey"),
+            recordRef = o.getString("recordRef"),
+            details = o.getString("details"),
+            timestampMillis = o.optLong("timestampMillis", 0L),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "activity_logs", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis")
+        )
+    }
 
     private fun notificationToJson(n: LocalNotificationEntity): JSONObject = JSONObject().apply {
         put("id", n.id)
@@ -1021,4 +1139,84 @@ class BackupRestoreManager(
         isRead = o.optBoolean("isRead", false),
         createdAtMillis = o.optLong("createdAtMillis", 0L)
     )
+
+    private fun schoolPostToJson(p: SchoolPostEntity): JSONObject = JSONObject().apply {
+        put("id", p.id)
+        put("postType", p.postType)
+        put("category", p.category)
+        put("title", p.title)
+        put("description", p.description)
+        putOpt("youtubeUrl", p.youtubeUrl)
+        putOpt("customThumbnailUri", p.customThumbnailUri)
+        put("photoUrisJson", p.photoUrisJson)
+        put("status", p.status)
+        put("isFeatured", p.isFeatured)
+        put("createdAtMillis", p.createdAtMillis)
+        putOpt("publishedAtMillis", p.publishedAtMillis)
+        put("updatedAtMillis", p.updatedAtMillis)
+        putSyncMetadata(p.remoteId, p.tenantId, p.syncState, p.serverUpdatedAtMillis, p.deletedAtMillis)
+    }
+
+    private fun schoolPostFromJson(o: JSONObject): SchoolPostEntity {
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        return SchoolPostEntity(
+            id = id,
+            postType = o.optString("postType", SchoolPostType.PHOTO),
+            category = o.optString("category", SchoolPostCategory.GENERAL),
+            title = o.optString("title", ""),
+            description = o.optString("description", ""),
+            youtubeUrl = o.optNullableString("youtubeUrl"),
+            customThumbnailUri = o.optNullableString("customThumbnailUri"),
+            photoUrisJson = o.optString("photoUrisJson", "[]"),
+            status = o.optString("status", SchoolPostStatus.UNPUBLISHED),
+            isFeatured = o.optBoolean("isFeatured", false),
+            createdAtMillis = o.optLong("createdAtMillis", 0L),
+            publishedAtMillis = if (o.has("publishedAtMillis") && !o.isNull("publishedAtMillis")) {
+                o.getLong("publishedAtMillis")
+            } else {
+                null
+            },
+            updatedAtMillis = o.optLong("updatedAtMillis", 0L),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "school_posts", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
+        )
+    }
+
+    private fun schoolHighlightToJson(h: SchoolHighlightEntity): JSONObject = JSONObject().apply {
+        put("id", h.id)
+        put("title", h.title)
+        put("youtubeShortsUrl", h.youtubeShortsUrl)
+        put("status", h.status)
+        put("createdAtMillis", h.createdAtMillis)
+        put("publishedAtMillis", h.publishedAtMillis)
+        put("expiresAtMillis", h.expiresAtMillis)
+        putSyncMetadata(h.remoteId, h.tenantId, h.syncState, h.serverUpdatedAtMillis, h.deletedAtMillis)
+    }
+
+    private fun schoolHighlightFromJson(o: JSONObject): SchoolHighlightEntity {
+        val id = o.optLong("id", 0L)
+        val tenantId = SyncMetadataDefaults.resolveTenantId(o.optNullableString("tenantId"))
+        val publishedAt = o.optLong("publishedAtMillis", 0L)
+        return SchoolHighlightEntity(
+            id = id,
+            title = o.optString("title", ""),
+            youtubeShortsUrl = o.optString("youtubeShortsUrl", ""),
+            status = o.optString("status", SchoolPostStatus.PUBLISHED),
+            createdAtMillis = o.optLong("createdAtMillis", publishedAt),
+            publishedAtMillis = publishedAt,
+            expiresAtMillis = o.optLong(
+                "expiresAtMillis",
+                SchoolHighlightEntity.computeExpiryMillis(publishedAt)
+            ),
+            remoteId = SyncMetadataDefaults.resolveRemoteId(o.optNullableString("remoteId"), "school_highlights", id, tenantId),
+            tenantId = tenantId,
+            syncState = SyncMetadataDefaults.resolveSyncState(o.optNullableString("syncState")),
+            serverUpdatedAtMillis = o.optNullableLong("serverUpdatedAtMillis"),
+            deletedAtMillis = o.optNullableLong("deletedAtMillis")
+        )
+    }
 }

@@ -7,7 +7,10 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 
-@Entity(tableName = "campus_hero_photos")
+@Entity(
+    tableName = "campus_hero_photos",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class CampusHeroPhotoEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val imageUri: String,
@@ -17,10 +20,18 @@ data class CampusHeroPhotoEntity(
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
-    val addedAtMillis: Long = System.currentTimeMillis()
+    val addedAtMillis: Long = System.currentTimeMillis(),
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
-@Entity(tableName = "gallery_albums")
+@Entity(
+    tableName = "gallery_albums",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class GalleryAlbumEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val title: String,
@@ -33,7 +44,12 @@ data class GalleryAlbumEntity(
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
-    val displayOrder: Int = 0
+    val displayOrder: Int = 0,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
 @Entity(
@@ -46,7 +62,10 @@ data class GalleryAlbumEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["albumId"])]
+    indices = [
+        Index(value = ["albumId"]),
+        Index(value = ["remoteId"], unique = true)
+    ]
 )
 data class GalleryMediaEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -60,7 +79,12 @@ data class GalleryMediaEntity(
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
     val approvalStatus: String = ApprovalStatus.PENDING,
-    val addedAtMillis: Long = System.currentTimeMillis()
+    val addedAtMillis: Long = System.currentTimeMillis(),
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )
 
 data class GalleryAlbumWithMedia(
@@ -72,7 +96,10 @@ data class GalleryAlbumWithMedia(
     val mediaItems: List<GalleryMediaEntity>
 )
 
-@Entity(tableName = "social_media_links")
+@Entity(
+    tableName = "social_media_links",
+    indices = [Index(value = ["remoteId"], unique = true)]
+)
 data class SocialMediaLinkEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val platformName: String,
@@ -82,5 +109,10 @@ data class SocialMediaLinkEntity(
     val isVerified: Boolean = false,
     val isPublished: Boolean = false,
     val isApproved: Boolean = false,
-    val approvalStatus: String = ApprovalStatus.PENDING
+    val approvalStatus: String = ApprovalStatus.PENDING,
+    val remoteId: String = SyncMetadataDefaults.newRemoteId(),
+    val tenantId: String = SyncMetadataDefaults.DEFAULT_TENANT_ID,
+    val syncState: String = SyncMetadataDefaults.DEFAULT_SYNC_STATE,
+    val serverUpdatedAtMillis: Long? = null,
+    val deletedAtMillis: Long? = null
 )

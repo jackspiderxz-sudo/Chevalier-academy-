@@ -8,6 +8,8 @@ import com.example.data.local.dao.FacilityDao
 import com.example.data.local.dao.GalleryDao
 import com.example.data.local.dao.HigherSecondaryCourseDao
 import com.example.data.local.dao.NewsDao
+import com.example.data.local.dao.SchoolHighlightDao
+import com.example.data.local.dao.SchoolPostDao
 import com.example.data.local.dao.SchoolProfileDao
 import com.example.data.local.dao.SocialMediaDao
 import com.example.data.local.dao.TransportDao
@@ -21,10 +23,14 @@ import com.example.data.local.entity.GalleryAlbumWithMedia
 import com.example.data.local.entity.GalleryMediaEntity
 import com.example.data.local.entity.HigherSecondaryCourseEntity
 import com.example.data.local.entity.NewsItemEntity
+import com.example.data.local.entity.SchoolHighlightEntity
+import com.example.data.local.entity.SchoolPostEntity
+import com.example.data.local.entity.SchoolPostStatus
 import com.example.data.local.entity.SchoolProfileEntity
 import com.example.data.local.entity.SocialMediaLinkEntity
 import com.example.data.local.entity.TransportRouteEntity
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
 class SchoolRepository(
@@ -37,7 +43,9 @@ class SchoolRepository(
     private val newsDao: NewsDao,
     private val announcementDao: AnnouncementDao,
     private val galleryDao: GalleryDao,
-    private val socialMediaDao: SocialMediaDao
+    private val socialMediaDao: SocialMediaDao,
+    private val schoolPostDao: SchoolPostDao? = null,
+    private val schoolHighlightDao: SchoolHighlightDao? = null
 ) {
     // Public-facing reactive streams (strictly verified, published & approved records only)
     val schoolProfile: Flow<SchoolProfileEntity?> = schoolProfileDao.observeProfile()
@@ -65,6 +73,12 @@ class SchoolRepository(
         }
     val galleryMedia: Flow<List<GalleryMediaEntity>> = galleryDao.observePublicMedia()
     val socialMediaLinks: Flow<List<SocialMediaLinkEntity>> = socialMediaDao.observePublic()
+    val publishedSchoolPosts: Flow<List<SchoolPostEntity>> =
+        schoolPostDao?.observePublishedPosts() ?: flowOf(emptyList())
+    val publishedSchoolHighlights: Flow<List<SchoolHighlightEntity>> =
+        schoolHighlightDao?.observeAllHighlights()?.map { list ->
+            list.filter { it.status == SchoolPostStatus.PUBLISHED }
+        } ?: flowOf(emptyList())
 
     // Management streams reserved for Prompt 3
     val allNewsForManagement: Flow<List<NewsItemEntity>> = newsDao.observeAll()
@@ -148,7 +162,9 @@ class SchoolRepository(
             newsDao = db.newsDao(),
             announcementDao = db.announcementDao(),
             galleryDao = db.galleryDao(),
-            socialMediaDao = db.socialMediaDao()
+            socialMediaDao = db.socialMediaDao(),
+            schoolPostDao = db.schoolPostDao(),
+            schoolHighlightDao = db.schoolHighlightDao()
         )
     }
 }

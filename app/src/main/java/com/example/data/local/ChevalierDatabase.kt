@@ -18,6 +18,8 @@ import com.example.data.local.dao.LocalNotificationDao
 import com.example.data.local.dao.ManagementAccountDao
 import com.example.data.local.dao.MediaStudioDao
 import com.example.data.local.dao.NewsDao
+import com.example.data.local.dao.SchoolHighlightDao
+import com.example.data.local.dao.SchoolPostDao
 import com.example.data.local.dao.SchoolProfileDao
 import com.example.data.local.dao.SocialMediaDao
 import com.example.data.local.dao.TransportDao
@@ -35,9 +37,12 @@ import com.example.data.local.entity.LocalNotificationEntity
 import com.example.data.local.entity.ManagementAccountEntity
 import com.example.data.local.entity.MediaStudioItemEntity
 import com.example.data.local.entity.NewsItemEntity
+import com.example.data.local.entity.SchoolHighlightEntity
+import com.example.data.local.entity.SchoolPostEntity
 import com.example.data.local.entity.SchoolProfileEntity
 import com.example.data.local.entity.SocialMediaLinkEntity
 import com.example.data.local.entity.StaffPermissionEntity
+import com.example.data.local.entity.SyncMetadataDefaults
 import com.example.data.local.entity.TransportRouteEntity
 import com.example.data.local.entity.VersionHistoryEntity
 import kotlinx.coroutines.CoroutineScope
@@ -64,10 +69,12 @@ import kotlinx.coroutines.launch
         VersionHistoryEntity::class,
         MediaStudioItemEntity::class,
         ActivityLogEntity::class,
-        LocalNotificationEntity::class
+        LocalNotificationEntity::class,
+        SchoolPostEntity::class,
+        SchoolHighlightEntity::class
     ],
-    version = 4,
-    exportSchema = false
+    version = 6,
+    exportSchema = true
 )
 abstract class ChevalierDatabase : RoomDatabase() {
     abstract fun schoolProfileDao(): SchoolProfileDao
@@ -87,6 +94,8 @@ abstract class ChevalierDatabase : RoomDatabase() {
     abstract fun mediaStudioDao(): MediaStudioDao
     abstract fun activityLogDao(): ActivityLogDao
     abstract fun localNotificationDao(): LocalNotificationDao
+    abstract fun schoolPostDao(): SchoolPostDao
+    abstract fun schoolHighlightDao(): SchoolHighlightDao
 
     companion object {
         const val DATABASE_NAME = "chevalier_academy.db"
@@ -283,6 +292,140 @@ abstract class ChevalierDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `school_posts` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `postType` TEXT NOT NULL,
+                        `category` TEXT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `description` TEXT NOT NULL,
+                        `youtubeUrl` TEXT,
+                        `customThumbnailUri` TEXT,
+                        `photoUrisJson` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `isFeatured` INTEGER NOT NULL,
+                        `createdAtMillis` INTEGER NOT NULL,
+                        `publishedAtMillis` INTEGER,
+                        `updatedAtMillis` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_posts_status` ON `school_posts` (`status`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_posts_isFeatured` ON `school_posts` (`isFeatured`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_posts_publishedAtMillis` ON `school_posts` (`publishedAtMillis`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_posts_category` ON `school_posts` (`category`)"
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `school_highlights` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `title` TEXT NOT NULL,
+                        `youtubeShortsUrl` TEXT NOT NULL,
+                        `status` TEXT NOT NULL,
+                        `createdAtMillis` INTEGER NOT NULL,
+                        `publishedAtMillis` INTEGER NOT NULL,
+                        `expiresAtMillis` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_highlights_status` ON `school_highlights` (`status`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_highlights_expiresAtMillis` ON `school_highlights` (`expiresAtMillis`)"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_school_highlights_publishedAtMillis` ON `school_highlights` (`publishedAtMillis`)"
+                )
+            }
+        }
+
+        private data class SyncTableMigrationSpec(
+            val tableName: String,
+            val supportsSoftDelete: Boolean
+        )
+
+        private val SYNC_ELIGIBLE_TABLES: List<SyncTableMigrationSpec> = listOf(
+            SyncTableMigrationSpec("school_profile", supportsSoftDelete = false),
+            SyncTableMigrationSpec("campus_hero_photos", supportsSoftDelete = true),
+            SyncTableMigrationSpec("academic_info", supportsSoftDelete = true),
+            SyncTableMigrationSpec("higher_secondary_courses", supportsSoftDelete = true),
+            SyncTableMigrationSpec("facilities", supportsSoftDelete = true),
+            SyncTableMigrationSpec("transport_routes", supportsSoftDelete = true),
+            SyncTableMigrationSpec("news_items", supportsSoftDelete = true),
+            SyncTableMigrationSpec("announcements", supportsSoftDelete = true),
+            SyncTableMigrationSpec("gallery_albums", supportsSoftDelete = true),
+            SyncTableMigrationSpec("gallery_media", supportsSoftDelete = true),
+            SyncTableMigrationSpec("social_media_links", supportsSoftDelete = true),
+            SyncTableMigrationSpec("school_posts", supportsSoftDelete = true),
+            SyncTableMigrationSpec("school_highlights", supportsSoftDelete = true),
+            SyncTableMigrationSpec("content_approvals", supportsSoftDelete = true),
+            SyncTableMigrationSpec("version_history", supportsSoftDelete = false),
+            SyncTableMigrationSpec("media_studio_items", supportsSoftDelete = true),
+            SyncTableMigrationSpec("activity_logs", supportsSoftDelete = false)
+        )
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val defaultTenantSql = SyncMetadataDefaults.DEFAULT_TENANT_ID.replace("'", "''")
+                val defaultSyncStateSql = SyncMetadataDefaults.DEFAULT_SYNC_STATE.replace("'", "''")
+
+                SYNC_ELIGIBLE_TABLES.forEach { spec ->
+                    val table = spec.tableName
+                    db.execSQL(
+                        "ALTER TABLE `$table` ADD COLUMN `remoteId` TEXT NOT NULL DEFAULT ''"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `$table` ADD COLUMN `tenantId` TEXT NOT NULL DEFAULT '$defaultTenantSql'"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `$table` ADD COLUMN `syncState` TEXT NOT NULL DEFAULT '$defaultSyncStateSql'"
+                    )
+                    db.execSQL(
+                        "ALTER TABLE `$table` ADD COLUMN `serverUpdatedAtMillis` INTEGER"
+                    )
+                    if (spec.supportsSoftDelete) {
+                        db.execSQL(
+                            "ALTER TABLE `$table` ADD COLUMN `deletedAtMillis` INTEGER"
+                        )
+                    }
+
+                    // Deterministically assign repeatable RFC-4122 UUIDs to all pre-existing rows
+                    val existingIds = mutableListOf<Long>()
+                    db.query("SELECT `id` FROM `$table`").use { cursor ->
+                        while (cursor.moveToNext()) {
+                            existingIds.add(cursor.getLong(0))
+                        }
+                    }
+                    existingIds.forEach { localId ->
+                        val stableRemoteId = SyncMetadataDefaults.deterministicRemoteId(
+                            tableName = table,
+                            localId = localId
+                        )
+                        db.execSQL(
+                            "UPDATE `$table` SET `remoteId` = ? WHERE `id` = ?",
+                            arrayOf<Any>(stableRemoteId, localId)
+                        )
+                    }
+
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS `index_${table}_remoteId` ON `$table` (`remoteId`)"
+                    )
+                }
+            }
+        }
+
         fun verifiedDefaultProfile(): SchoolProfileEntity = SchoolProfileEntity(
             id = 1,
             schoolName = "CHEVALIER ACADEMY MATRIC HIGHER SECONDARY SCHOOL",
@@ -316,7 +459,7 @@ abstract class ChevalierDatabase : RoomDatabase() {
                     ChevalierDatabase::class.java,
                     DATABASE_NAME
                 )
-                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

@@ -5,6 +5,76 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.example.core.model.AppLanguage
 
 @Immutable
+data class GalleryAppStrings(
+    val allCategoriesLabel: String,
+    val albumsTab: String,
+    val allPhotosTab: String,
+    val galleryPendingDesc: String,
+    val photosCountSuffix: String,
+    val previousPhotoDesc: String,
+    val nextPhotoDesc: String,
+    val youtubeVideoLabel: String,
+    val openYouTubeVideoLabel: String,
+    val mediaUnavailableLabel: String,
+    val galleryViewingAlbumLabel: String,
+    val galleryClearAlbumFilterLabel: String,
+    val galleryEmptyAlbumTitle: String,
+    val galleryEmptyAlbumDesc: String
+)
+
+@Immutable
+data class SocialCategoryStrings(
+    val general: String,
+    val academics: String,
+    val events: String,
+    val sports: String,
+    val achievements: String,
+    val campusLife: String,
+    val announcement: String
+) {
+    fun labelFor(categoryKey: String): String = when (categoryKey.trim().lowercase()) {
+        "general" -> general
+        "academics" -> academics
+        "events" -> events
+        "sports" -> sports
+        "achievements" -> achievements
+        "campus life" -> campusLife
+        "announcement" -> announcement
+        else -> categoryKey
+    }
+}
+
+private fun englishSocialCategoryStrings() = SocialCategoryStrings(
+    general = "General",
+    academics = "Academics",
+    events = "Events",
+    sports = "Sports",
+    achievements = "Achievements",
+    campusLife = "Campus Life",
+    announcement = "Announcement"
+)
+
+private fun tamilSocialCategoryStrings() = SocialCategoryStrings(
+    general = "பொது",
+    academics = "கல்வி",
+    events = "நிகழ்வுகள்",
+    sports = "விளையாட்டு",
+    achievements = "சாதனைகள்",
+    campusLife = "வளாக வாழ்க்கை",
+    announcement = "அறிவிப்பு"
+)
+
+private fun hindiSocialCategoryStrings() = SocialCategoryStrings(
+    general = "सामान्य",
+    academics = "शैक्षणिक",
+    events = "कार्यक्रम",
+    sports = "खेल",
+    achievements = "उपलब्धियाँ",
+    campusLife = "परिसर जीवन",
+    announcement = "घोषणा"
+)
+
+@Immutable
 data class AppStrings(
     // Branding (School-specific text preserved verbatim)
     val officialSchoolName: String = "CHEVALIER ACADEMY MATRIC HIGHER SECONDARY SCHOOL",
@@ -56,6 +126,7 @@ data class AppStrings(
     val titleAnnouncements: String,
     val titleNewsAnnouncements: String,
     val titleSocialMedia: String,
+    val titleBookmarks: String = "Bookmarks",
     val titleSettings: String,
     val titleManagementEntry: String,
 
@@ -110,17 +181,8 @@ data class AppStrings(
     val classLevelLabel: String,
     val eligibilityLabel: String,
 
-    // Gallery
-    val allCategoriesLabel: String,
-    val albumsTab: String,
-    val allPhotosTab: String,
-    val galleryPendingDesc: String,
-    val photosCountSuffix: String,
-    val previousPhotoDesc: String,
-    val nextPhotoDesc: String,
-    val youtubeVideoLabel: String,
-    val openYouTubeVideoLabel: String,
-    val mediaUnavailableLabel: String,
+    // Gallery (grouped to keep JVM constructor/copy$default parameter count under 255-slot limit)
+    val gallery: GalleryAppStrings,
 
     // Contact, Maps & Social Media
     val verifiedCampusLocation: String,
@@ -227,6 +289,10 @@ data class AppStrings(
     val parentModuleSchoolCircularsDesc: String,
     val parentModuleEmergencyInfo: String,
     val parentModuleEmergencyInfoDesc: String,
+    val parentModuleParentGuidance: String,
+    val parentModuleParentGuidanceDesc: String,
+    val parentStudentSocialFeedTitle: String,
+    val parentStudentSocialFeedEmptyDesc: String,
     val parentModulePlaceholderBadge: String,
     val parentModuleReturnDashboardBtn: String,
     val parentModuleEmergencySchoolOfficeTitle: String,
@@ -249,8 +315,78 @@ data class AppStrings(
     val storageStatusLabel: String,
     val storageStatusValue: String,
     val demoNoticeLabel: String,
-    val demoNoticeValue: String
-)
+    val demoNoticeValue: String,
+
+    // Phase 3 — Home Social Network (Highlights, Feed, Bookmarks, Playback & Accessibility)
+    val socialHighlightsTitle: String = "School Highlights",
+    val socialMoreLabel: String = "More",
+    val socialFeedTitle: String = "School Feed",
+    val socialAllPostsFilter: String = "All Posts",
+    val socialLikeLabel: String = "Like",
+    val socialLikedLabel: String = "Liked",
+    val socialBookmarkLabel: String = "Bookmark",
+    val socialBookmarkedLabel: String = "Bookmarked",
+    val socialPinnedBadge: String = "Pinned",
+    val socialYoutubeShortLabel: String = "YouTube Short",
+    val socialOpenInYouTubeLabel: String = "Open in YouTube",
+    val socialCopyVideoLinkLabel: String = "Copy Video Link",
+    val socialHighlightLeftSuffix: String = "left",
+    val socialHighlightsEmptyTitle: String = "No active 24-hour Highlights",
+    val socialHighlightsEmptyDesc: String = "Short campus video highlights published by school management appear here for 24 hours.",
+    val socialHighlightsDialogEmpty: String = "No active 24-hour Highlights right now.",
+    val socialHighlightsActiveCountSuffix: String = "active 24-hour YouTube Shorts",
+    val socialHighlightsMoreActiveTemplate: String = "+{count} more active",
+    val socialHighlightsViewAllTemplate: String = "View all ({count})",
+    val socialFeedEmptyTitle: String = "No published school posts yet",
+    val socialFeedEmptyDesc: String = "Official campus stories, photos, and videos published by Chevalier Academy management will appear here.",
+    val socialFeedCategoryEmptyTemplate: String = "No posts in {category}",
+    val socialFeedCategoryEmptyDesc: String = "Try another category or switch back to All Posts to view the latest school updates.",
+    val socialShowAllPostsBtn: String = "Show All Posts",
+    val socialBookmarksEmptyTitle: String = "No bookmarked posts yet",
+    val socialBookmarksEmptyDesc: String = "Bookmark school stories, photos, and videos from the Home feed to revisit them here on this device.",
+    val socialBrowseFeedBtn: String = "Browse School Feed",
+    val socialEmbedUnavailableTitle: String = "Embedded playback unavailable",
+    val socialEmbedUnavailableDesc: String = "This YouTube video cannot be played inside the embedded player right now. Open it directly in YouTube.",
+    val socialPlayHighlightDesc: String = "Play highlight",
+    val socialHighlightShortDesc: String = "School Highlight Short",
+    val socialMoreHighlightsDesc: String = "More Highlights",
+    val socialCloseHighlightsDesc: String = "Close highlights",
+    val socialPlayYouTubeVideoDesc: String = "Play YouTube video",
+    val socialPhotoLabel: String = "photo",
+    val socialCategories: SocialCategoryStrings = englishSocialCategoryStrings()
+) {
+    val allCategoriesLabel: String get() = gallery.allCategoriesLabel
+    val albumsTab: String get() = gallery.albumsTab
+    val allPhotosTab: String get() = gallery.allPhotosTab
+    val galleryPendingDesc: String get() = gallery.galleryPendingDesc
+    val photosCountSuffix: String get() = gallery.photosCountSuffix
+    val previousPhotoDesc: String get() = gallery.previousPhotoDesc
+    val nextPhotoDesc: String get() = gallery.nextPhotoDesc
+    val youtubeVideoLabel: String get() = gallery.youtubeVideoLabel
+    val openYouTubeVideoLabel: String get() = gallery.openYouTubeVideoLabel
+    val mediaUnavailableLabel: String get() = gallery.mediaUnavailableLabel
+    val galleryViewingAlbumLabel: String get() = gallery.galleryViewingAlbumLabel
+    val galleryClearAlbumFilterLabel: String get() = gallery.galleryClearAlbumFilterLabel
+    val galleryEmptyAlbumTitle: String get() = gallery.galleryEmptyAlbumTitle
+    val galleryEmptyAlbumDesc: String get() = gallery.galleryEmptyAlbumDesc
+
+    fun socialCategoryLabel(categoryKey: String): String = socialCategories.labelFor(categoryKey)
+
+    fun formatMoreActiveHighlights(count: Int): String =
+        socialHighlightsMoreActiveTemplate.replace("{count}", count.toString())
+
+    fun formatViewAllHighlights(count: Int): String =
+        socialHighlightsViewAllTemplate.replace("{count}", count.toString())
+
+    fun formatCategoryEmptyTitle(category: String): String =
+        socialFeedCategoryEmptyTemplate.replace("{category}", category)
+
+    fun formatPhotoPosition(title: String, index: Int): String =
+        "$title $socialPhotoLabel $index"
+
+    fun formatPhotoOfTotal(title: String, index: Int, total: Int): String =
+        "$title $socialPhotoLabel $index / $total"
+}
 
 val LocalAppStrings = staticCompositionLocalOf { englishStrings() }
 
@@ -340,16 +476,22 @@ private fun englishStrings() = AppStrings(
     subjectsLabel = "Subjects",
     classLevelLabel = "Classes",
     eligibilityLabel = "Eligibility",
-    allCategoriesLabel = "All",
-    albumsTab = "Albums",
-    allPhotosTab = "Photos",
-    galleryPendingDesc = "Published and approved school photographs will appear here once supplied by management.",
-    photosCountSuffix = "photos",
-    previousPhotoDesc = "Previous photo",
-    nextPhotoDesc = "Next photo",
-    youtubeVideoLabel = "YouTube Video",
-    openYouTubeVideoLabel = "Open on YouTube",
-    mediaUnavailableLabel = "Image unavailable",
+    gallery = GalleryAppStrings(
+        allCategoriesLabel = "All",
+        albumsTab = "Albums",
+        allPhotosTab = "Photos",
+        galleryPendingDesc = "Published and approved school photographs will appear here once supplied by management.",
+        photosCountSuffix = "photos",
+        previousPhotoDesc = "Previous photo",
+        nextPhotoDesc = "Next photo",
+        youtubeVideoLabel = "YouTube Video",
+        openYouTubeVideoLabel = "Open on YouTube",
+        mediaUnavailableLabel = "Image unavailable",
+        galleryViewingAlbumLabel = "Viewing Album",
+        galleryClearAlbumFilterLabel = "All Photos",
+        galleryEmptyAlbumTitle = "No Photos in This Album Yet",
+        galleryEmptyAlbumDesc = "This album currently has no published photos or videos. Return to All Photos to browse other gallery items."
+    ),
     verifiedCampusLocation = "Campus Address",
     emblemAttributionLabel = "Official Emblem Inscription",
     addressLabel = "School Address",
@@ -444,6 +586,10 @@ private fun englishStrings() = AppStrings(
     parentModuleSchoolCircularsDesc = "Official school circulars and class-specific notices published by Chevalier Academy appear here.",
     parentModuleEmergencyInfo = "Emergency Information",
     parentModuleEmergencyInfoDesc = "Quick access to official school contact details and student emergency contacts.",
+    parentModuleParentGuidance = "Parent Guidance",
+    parentModuleParentGuidanceDesc = "Parenting tips, school guidance resources, and family support notes will appear here once published.",
+    parentStudentSocialFeedTitle = "Student Social Feed",
+    parentStudentSocialFeedEmptyDesc = "Published school photos, videos, and student activity updates will appear here once shared by Chevalier Academy.",
     parentModulePlaceholderBadge = "Implementation Placeholder — Pending Integration",
     parentModuleReturnDashboardBtn = "Back to Parent Dashboard",
     parentModuleEmergencySchoolOfficeTitle = "Official School Contact Details",
@@ -464,7 +610,43 @@ private fun englishStrings() = AppStrings(
     storageStatusLabel = "Local Data Architecture",
     storageStatusValue = "Room Database & DataStore (Local Offline Persistence)",
     demoNoticeLabel = "Build Edition",
-    demoNoticeValue = "Official Management Review — Trial Demo"
+    demoNoticeValue = "Official Management Review — Trial Demo",
+    socialHighlightsTitle = "School Highlights",
+    socialMoreLabel = "More",
+    socialFeedTitle = "School Feed",
+    socialAllPostsFilter = "All Posts",
+    socialLikeLabel = "Like",
+    socialLikedLabel = "Liked",
+    socialBookmarkLabel = "Bookmark",
+    socialBookmarkedLabel = "Bookmarked",
+    socialPinnedBadge = "Pinned",
+    socialYoutubeShortLabel = "YouTube Short",
+    socialOpenInYouTubeLabel = "Open in YouTube",
+    socialCopyVideoLinkLabel = "Copy Video Link",
+    socialHighlightLeftSuffix = "left",
+    socialHighlightsEmptyTitle = "No active 24-hour Highlights",
+    socialHighlightsEmptyDesc = "Short campus video highlights published by school management appear here for 24 hours.",
+    socialHighlightsDialogEmpty = "No active 24-hour Highlights right now.",
+    socialHighlightsActiveCountSuffix = "active 24-hour YouTube Shorts",
+    socialHighlightsMoreActiveTemplate = "+{count} more active",
+    socialHighlightsViewAllTemplate = "View all ({count})",
+    socialFeedEmptyTitle = "No published school posts yet",
+    socialFeedEmptyDesc = "Official campus stories, photos, and videos published by Chevalier Academy management will appear here.",
+    socialFeedCategoryEmptyTemplate = "No posts in {category}",
+    socialFeedCategoryEmptyDesc = "Try another category or switch back to All Posts to view the latest school updates.",
+    socialShowAllPostsBtn = "Show All Posts",
+    socialBookmarksEmptyTitle = "No bookmarked posts yet",
+    socialBookmarksEmptyDesc = "Bookmark school stories, photos, and videos from the Home feed to revisit them here on this device.",
+    socialBrowseFeedBtn = "Browse School Feed",
+    socialEmbedUnavailableTitle = "Embedded playback unavailable",
+    socialEmbedUnavailableDesc = "This YouTube video cannot be played inside the embedded player right now. Open it directly in YouTube.",
+    socialPlayHighlightDesc = "Play highlight",
+    socialHighlightShortDesc = "School Highlight Short",
+    socialMoreHighlightsDesc = "More Highlights",
+    socialCloseHighlightsDesc = "Close highlights",
+    socialPlayYouTubeVideoDesc = "Play YouTube video",
+    socialPhotoLabel = "photo",
+    socialCategories = englishSocialCategoryStrings()
 )
 
 private fun tamilStrings() = AppStrings(
@@ -502,6 +684,7 @@ private fun tamilStrings() = AppStrings(
     titleAnnouncements = "அறிவிப்புகள்",
     titleNewsAnnouncements = "செய்திகள் & அறிவிப்புகள்",
     titleSocialMedia = "சமூக ஊடகங்கள்",
+    titleBookmarks = "சேமித்தவை",
     titleSettings = "அமைப்புகள்",
     titleManagementEntry = "பள்ளி நிர்வாகம்",
     backContentDescription = "பின் செல்லவும்",
@@ -547,16 +730,22 @@ private fun tamilStrings() = AppStrings(
     subjectsLabel = "பாடங்கள்",
     classLevelLabel = "வகுப்புகள்",
     eligibilityLabel = "தகுதி",
-    allCategoriesLabel = "அனைத்தும்",
-    albumsTab = "தொகுப்புகள்",
-    allPhotosTab = "படங்கள்",
-    galleryPendingDesc = "நிர்வாகத்தால் வெளியிடப்பட்டு அங்கீகரிக்கப்பட்ட பள்ளிப் படங்கள் இங்கு காட்டப்படும்.",
-    photosCountSuffix = "படங்கள்",
-    previousPhotoDesc = "முந்தைய படம்",
-    nextPhotoDesc = "அடுத்த படம்",
-    youtubeVideoLabel = "YouTube வீடியோ",
-    openYouTubeVideoLabel = "YouTube-இல் திறக்கவும்",
-    mediaUnavailableLabel = "படம் கிடைக்கவில்லை",
+    gallery = GalleryAppStrings(
+        allCategoriesLabel = "அனைத்தும்",
+        albumsTab = "தொகுப்புகள்",
+        allPhotosTab = "படங்கள்",
+        galleryPendingDesc = "நிர்வாகத்தால் வெளியிடப்பட்டு அங்கீகரிக்கப்பட்ட பள்ளிப் படங்கள் இங்கு காட்டப்படும்.",
+        photosCountSuffix = "படங்கள்",
+        previousPhotoDesc = "முந்தைய படம்",
+        nextPhotoDesc = "அடுத்த படம்",
+        youtubeVideoLabel = "YouTube வீடியோ",
+        openYouTubeVideoLabel = "YouTube-இல் திறக்கவும்",
+        mediaUnavailableLabel = "படம் கிடைக்கவில்லை",
+        galleryViewingAlbumLabel = "காணும் தொகுப்பு",
+        galleryClearAlbumFilterLabel = "அனைத்து படங்கள்",
+        galleryEmptyAlbumTitle = "இந்தத் தொகுப்பில் இன்னும் படங்கள் இல்லை",
+        galleryEmptyAlbumDesc = "இந்தத் தொகுப்பில் தற்போது வெளியிடப்பட்ட படங்கள் அல்லது வீடியோக்கள் எதுவும் இல்லை. பிற படங்களைக் காண அனைத்து படங்களுக்கும் திரும்பவும்."
+    ),
     verifiedCampusLocation = "பள்ளி முகவரி",
     emblemAttributionLabel = "அதிகாரப்பூர்வ சின்னப் பதிவு",
     addressLabel = "பள்ளி முகவரி",
@@ -651,6 +840,10 @@ private fun tamilStrings() = AppStrings(
     parentModuleSchoolCircularsDesc = "Chevalier Academy வெளியிடும் அதிகாரப்பூர்வ சுற்றறிக்கைகள் மற்றும் அறிவிப்புகள் இங்கு தோன்றும்.",
     parentModuleEmergencyInfo = "அவசரத் தகவல்",
     parentModuleEmergencyInfoDesc = "அதிகாரப்பூர்வ பள்ளி தொடர்பு எண்கள் மற்றும் மாணவர் அவசரத் தொடர்பு விவரங்களுக்கான விரைவு அணுகல்.",
+    parentModuleParentGuidance = "பெற்றோர் வழிகாட்டுதல்",
+    parentModuleParentGuidanceDesc = "பெற்றோர் வழிகாட்டுதல் குறிப்புகள், பள்ளி ஆலோசனை வளங்கள் மற்றும் உதவித் தகவல்கள் வெளியிடப்பட்ட பிறகு இங்கு தோன்றும்.",
+    parentStudentSocialFeedTitle = "மாணவர் சமூக ஊட்டம்",
+    parentStudentSocialFeedEmptyDesc = "Chevalier Academy பகிரும் புகைப்படங்கள், வீடியோக்கள் மற்றும் மாணவர் செயல்பாட்டு புதுப்பிப்புகள் இங்கு தோன்றும்.",
     parentModulePlaceholderBadge = "செயல்பாட்டு மாதிரி — ஒருங்கிணைப்பு காத்திருக்கிறது",
     parentModuleReturnDashboardBtn = "பெற்றோர் முகப்புக்குத் திரும்பு",
     parentModuleEmergencySchoolOfficeTitle = "அதிகாரப்பூர்வ பள்ளி தொடர்பு விவரங்கள்",
@@ -671,7 +864,43 @@ private fun tamilStrings() = AppStrings(
     storageStatusLabel = "உள்ளூர் தரவு அமைப்பு",
     storageStatusValue = "Room Database & DataStore (ஆஃப்லைன் உள்ளூர் சேமிப்பு)",
     demoNoticeLabel = "பதிப்பு நிலை",
-    demoNoticeValue = "பள்ளி நிர்வாகப் பார்வைக்கான சோதனை பதிப்பு"
+    demoNoticeValue = "பள்ளி நிர்வாகப் பார்வைக்கான சோதனை பதிப்பு",
+    socialHighlightsTitle = "பள்ளி சிறப்பம்சங்கள்",
+    socialMoreLabel = "மேலும்",
+    socialFeedTitle = "பள்ளிப் பதிவுகள்",
+    socialAllPostsFilter = "அனைத்துப் பதிவுகள்",
+    socialLikeLabel = "விருப்பம்",
+    socialLikedLabel = "விரும்பப்பட்டது",
+    socialBookmarkLabel = "சேமி",
+    socialBookmarkedLabel = "சேமிக்கப்பட்டது",
+    socialPinnedBadge = "முக்கியம்",
+    socialYoutubeShortLabel = "YouTube ஷார்ட்",
+    socialOpenInYouTubeLabel = "YouTube-இல் திறக்கவும்",
+    socialCopyVideoLinkLabel = "வீடியோ இணைப்பை நகலெடு",
+    socialHighlightLeftSuffix = "மீதம்",
+    socialHighlightsEmptyTitle = "செயலில் உள்ள 24 மணி நேர சிறப்பம்சங்கள் இல்லை",
+    socialHighlightsEmptyDesc = "பள்ளி நிர்வாகம் வெளியிடும் குறுகிய வளாக வீடியோ சிறப்பம்சங்கள் 24 மணி நேரத்திற்கு இங்கு காட்டப்படும்.",
+    socialHighlightsDialogEmpty = "தற்போது செயலில் உள்ள 24 மணி நேர சிறப்பம்சங்கள் எதுவும் இல்லை.",
+    socialHighlightsActiveCountSuffix = "செயலில் உள்ள 24 மணி நேர YouTube ஷார்ட்ஸ்",
+    socialHighlightsMoreActiveTemplate = "+{count} மேலும் செயலில்",
+    socialHighlightsViewAllTemplate = "அனைத்தும் ({count})",
+    socialFeedEmptyTitle = "வெளியிடப்பட்ட பள்ளிப் பதிவுகள் இன்னும் இல்லை",
+    socialFeedEmptyDesc = "Chevalier Academy நிர்வாகம் வெளியிடும் அதிகாரப்பூர்வ வளாகச் செய்திகள், படங்கள் மற்றும் வீடியோக்கள் இங்கு தோன்றும்.",
+    socialFeedCategoryEmptyTemplate = "{category} பிரிவில் பதிவுகள் இல்லை",
+    socialFeedCategoryEmptyDesc = "சமீபத்திய பள்ளிப் புதுப்பிப்புகளைப் பார்க்க மற்றொரு பிரிவைத் தேர்ந்தெடுக்கவும் அல்லது அனைத்துப் பதிவுகளுக்குத் திரும்பவும்.",
+    socialShowAllPostsBtn = "அனைத்துப் பதிவுகளையும் காட்டு",
+    socialBookmarksEmptyTitle = "சேமிக்கப்பட்ட பதிவுகள் இன்னும் இல்லை",
+    socialBookmarksEmptyDesc = "முகப்புப் பதிவுகளிலிருந்து பள்ளிச் செய்திகள், படங்கள் மற்றும் வீடியோக்களைச் சேமித்து இச்சாதனத்தில் மீண்டும் பார்க்கவும்.",
+    socialBrowseFeedBtn = "பள்ளிப் பதிவுகளைப் பார்க்க",
+    socialEmbedUnavailableTitle = "உட்பொதிக்கப்பட்ட இயக்கம் கிடைக்கவில்லை",
+    socialEmbedUnavailableDesc = "இந்த YouTube வீடியோவை தற்போது உட்பொதிக்கப்பட்ட பிளேயரில் இயக்க முடியவில்லை. YouTube-இல் நேரடியாகத் திறக்கவும்.",
+    socialPlayHighlightDesc = "சிறப்பம்சத்தை இயக்கு",
+    socialHighlightShortDesc = "பள்ளி சிறப்பம்ச ஷார்ட்",
+    socialMoreHighlightsDesc = "மேலும் சிறப்பம்சங்கள்",
+    socialCloseHighlightsDesc = "சிறப்பம்சங்களை மூடு",
+    socialPlayYouTubeVideoDesc = "YouTube வீடியோவை இயக்கு",
+    socialPhotoLabel = "படம்",
+    socialCategories = tamilSocialCategoryStrings()
 )
 
 private fun hindiStrings() = AppStrings(
@@ -709,6 +938,7 @@ private fun hindiStrings() = AppStrings(
     titleAnnouncements = "घोषणाएँ",
     titleNewsAnnouncements = "समाचार एवं घोषणाएँ",
     titleSocialMedia = "सोशल मीडिया",
+    titleBookmarks = "बुकमार्क",
     titleSettings = "सेटिंग्स",
     titleManagementEntry = "विद्यालय प्रबंधन",
     backContentDescription = "पीछे जाएँ",
@@ -754,16 +984,22 @@ private fun hindiStrings() = AppStrings(
     subjectsLabel = "विषय",
     classLevelLabel = "कक्षाएँ",
     eligibilityLabel = "पात्रता",
-    allCategoriesLabel = "सभी",
-    albumsTab = "एल्बम",
-    allPhotosTab = "फ़ोटो",
-    galleryPendingDesc = "प्रबंधन द्वारा प्रकाशित एवं स्वीकृत विद्यालय फ़ोटो यहाँ दिखाई जाएँगी।",
-    photosCountSuffix = "फ़ोटो",
-    previousPhotoDesc = "पिछली फ़ोटो",
-    nextPhotoDesc = "अगली फ़ोटो",
-    youtubeVideoLabel = "YouTube वीडियो",
-    openYouTubeVideoLabel = "YouTube पर खोलें",
-    mediaUnavailableLabel = "छवि उपलब्ध नहीं है",
+    gallery = GalleryAppStrings(
+        allCategoriesLabel = "सभी",
+        albumsTab = "एल्बम",
+        allPhotosTab = "फ़ोटो",
+        galleryPendingDesc = "प्रबंधन द्वारा प्रकाशित एवं स्वीकृत विद्यालय फ़ोटो यहाँ दिखाई जाएँगी।",
+        photosCountSuffix = "फ़ोटो",
+        previousPhotoDesc = "पिछली फ़ोटो",
+        nextPhotoDesc = "अगली फ़ोटो",
+        youtubeVideoLabel = "YouTube वीडियो",
+        openYouTubeVideoLabel = "YouTube पर खोलें",
+        mediaUnavailableLabel = "छवि उपलब्ध नहीं है",
+        galleryViewingAlbumLabel = "देखा जा रहा एल्बम",
+        galleryClearAlbumFilterLabel = "सभी फ़ोटो",
+        galleryEmptyAlbumTitle = "इस एल्बम में अभी कोई फ़ोटो नहीं है",
+        galleryEmptyAlbumDesc = "इस एल्बम में अभी कोई प्रकाशित फ़ोटो या वीडियो नहीं है। अन्य गैलरी आइटम देखने के लिए सभी फ़ोटो पर वापस जाएँ।"
+    ),
     verifiedCampusLocation = "विद्यालय का पता",
     emblemAttributionLabel = "आधिकारिक प्रतीक विवरण",
     addressLabel = "विद्यालय पता",
@@ -858,6 +1094,10 @@ private fun hindiStrings() = AppStrings(
     parentModuleSchoolCircularsDesc = "Chevalier Academy द्वारा प्रकाशित आधिकारिक परिपत्र और कक्षा सूचनाएँ यहाँ दिखाई देती हैं।",
     parentModuleEmergencyInfo = "आपातकालीन जानकारी",
     parentModuleEmergencyInfoDesc = "आधिकारिक विद्यालय संपर्क विवरण और छात्र आपातकालीन संपर्क तक त्वरित पहुँच।",
+    parentModuleParentGuidance = "अभिभावक मार्गदर्शन",
+    parentModuleParentGuidanceDesc = "अभिभावक मार्गदर्शन सुझाव, विद्यालय परामर्श संसाधन और सहायता जानकारी प्रकाशित होने पर यहाँ दिखाई देगी।",
+    parentStudentSocialFeedTitle = "छात्र सोशल फ़ीड",
+    parentStudentSocialFeedEmptyDesc = "Chevalier Academy द्वारा साझा किए गए फ़ोटो, वीडियो और छात्र गतिविधि अपडेट यहाँ दिखाई देंगे।",
     parentModulePlaceholderBadge = "कार्यान्वयन प्लेसहोल्डर — एकीकरण लंबित",
     parentModuleReturnDashboardBtn = "अभिभावक डैशबोर्ड पर लौटें",
     parentModuleEmergencySchoolOfficeTitle = "आधिकारिक विद्यालय संपर्क विवरण",
@@ -878,5 +1118,41 @@ private fun hindiStrings() = AppStrings(
     storageStatusLabel = "स्थानीय डेटा संरचना",
     storageStatusValue = "Room Database और DataStore (ऑफ़लाइन स्थानीय संग्रहण)",
     demoNoticeLabel = "संस्करण",
-    demoNoticeValue = "विद्यालय प्रबंधन समीक्षा — परीक्षण डेमो"
+    demoNoticeValue = "विद्यालय प्रबंधन समीक्षा — परीक्षण डेमो",
+    socialHighlightsTitle = "विद्यालय झलकियाँ",
+    socialMoreLabel = "अधिक",
+    socialFeedTitle = "विद्यालय फ़ीड",
+    socialAllPostsFilter = "सभी पोस्ट",
+    socialLikeLabel = "पसंद",
+    socialLikedLabel = "पसंद किया",
+    socialBookmarkLabel = "बुकमार्क",
+    socialBookmarkedLabel = "बुकमार्क किया",
+    socialPinnedBadge = "पिन किया गया",
+    socialYoutubeShortLabel = "YouTube शॉर्ट",
+    socialOpenInYouTubeLabel = "YouTube में खोलें",
+    socialCopyVideoLinkLabel = "वीडियो लिंक कॉपी करें",
+    socialHighlightLeftSuffix = "शेष",
+    socialHighlightsEmptyTitle = "कोई सक्रिय 24-घंटे की झलकियाँ नहीं हैं",
+    socialHighlightsEmptyDesc = "विद्यालय प्रबंधन द्वारा प्रकाशित लघु परिसर वीडियो झलकियाँ 24 घंटे के लिए यहाँ दिखाई देंगी।",
+    socialHighlightsDialogEmpty = "अभी कोई सक्रिय 24-घंटे की झलकियाँ नहीं हैं।",
+    socialHighlightsActiveCountSuffix = "सक्रिय 24-घंटे YouTube शॉर्ट्स",
+    socialHighlightsMoreActiveTemplate = "+{count} और सक्रिय",
+    socialHighlightsViewAllTemplate = "सभी देखें ({count})",
+    socialFeedEmptyTitle = "अभी कोई प्रकाशित विद्यालय पोस्ट नहीं है",
+    socialFeedEmptyDesc = "Chevalier Academy प्रबंधन द्वारा प्रकाशित आधिकारिक परिसर कहानियाँ, फ़ोटो और वीडियो यहाँ दिखाई देंगे।",
+    socialFeedCategoryEmptyTemplate = "{category} में कोई पोस्ट नहीं",
+    socialFeedCategoryEmptyDesc = "नवीनतम विद्यालय अपडेट देखने के लिए कोई अन्य श्रेणी चुनें या सभी पोस्ट पर लौटें।",
+    socialShowAllPostsBtn = "सभी पोस्ट दिखाएँ",
+    socialBookmarksEmptyTitle = "अभी कोई बुकमार्क की गई पोस्ट नहीं है",
+    socialBookmarksEmptyDesc = "इस डिवाइस पर बाद में देखने के लिए होम फ़ीड से विद्यालय की कहानियाँ, फ़ोटो और वीडियो बुकमार्क करें।",
+    socialBrowseFeedBtn = "विद्यालय फ़ीड देखें",
+    socialEmbedUnavailableTitle = "एम्बेडेड प्लेबैक उपलब्ध नहीं है",
+    socialEmbedUnavailableDesc = "यह YouTube वीडियो अभी एम्बेडेड प्लेयर में नहीं चल पा रहा है। इसे सीधे YouTube में खोलें।",
+    socialPlayHighlightDesc = "झलक चलाएँ",
+    socialHighlightShortDesc = "विद्यालय झलक शॉर्ट",
+    socialMoreHighlightsDesc = "अधिक झलकियाँ",
+    socialCloseHighlightsDesc = "झलकियाँ बंद करें",
+    socialPlayYouTubeVideoDesc = "YouTube वीडियो चलाएँ",
+    socialPhotoLabel = "फ़ोटो",
+    socialCategories = hindiSocialCategoryStrings()
 )

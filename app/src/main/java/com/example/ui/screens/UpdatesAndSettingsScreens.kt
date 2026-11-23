@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,19 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DarkMode
@@ -38,13 +31,10 @@ import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.Translate
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -65,13 +55,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.BuildConfig
-import com.example.R
 import com.example.core.i18n.LocalAppStrings
 import com.example.core.model.AppLanguage
 import com.example.core.model.AppThemeMode
@@ -764,154 +751,6 @@ fun SettingsScreen(
             }
 
             item { PoweredByJkLabsFooter() }
-        }
-    }
-}
-
-@Composable
-fun ManagementLoginScreen(
-    onNavigateBackToPublic: () -> Unit
-) {
-    val strings = LocalAppStrings.current
-    val brand = LocalBrandPalette.current
-    BackHandler(onBack = onNavigateBackToPublic)
-
-    Surface(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("management_entry_screen"),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding(),
-            contentAlignment = Alignment.TopCenter
-        ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = 560.dp)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onNavigateBackToPublic,
-                        modifier = Modifier.testTag("management_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = strings.backContentDescription
-                        )
-                    }
-                    Text(
-                        text = strings.titleManagementEntry,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
-                    border = BorderStroke(2.dp, brand.royalGold),
-                    shadowElevation = 4.dp,
-                    modifier = Modifier.size(96.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.chevalier_emblem),
-                        contentDescription = strings.officialSchoolName,
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Surface(
-                    color = brand.burgundy.copy(alpha = 0.14f),
-                    shape = RoundedCornerShape(50)
-                ) {
-                    Text(
-                        text = strings.managementReservedBadge,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = brand.burgundy,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = strings.managementScreenHeadline,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Card(
-                    shape = MaterialTheme.shapes.large,
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.AdminPanelSettings,
-                            contentDescription = strings.managementScreenHeadline,
-                            tint = brand.burgundy,
-                            modifier = Modifier.size(40.dp)
-                        )
-                        Text(
-                            text = strings.managementScreenBody,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            textAlign = TextAlign.Center
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        Text(
-                            text = strings.managementScreenNote,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Button(
-                    onClick = onNavigateBackToPublic,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .testTag("management_return_public_button"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = brand.burgundy,
-                        contentColor = Color.White
-                    ),
-                    shape = MaterialTheme.shapes.medium
-                ) {
-                    Text(strings.returnToPublicAppBtn)
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-                PoweredByJkLabsFooter()
-            }
         }
     }
 }

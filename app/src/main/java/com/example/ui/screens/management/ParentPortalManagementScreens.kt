@@ -72,6 +72,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.core.model.AppLanguage
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
 import com.example.ui.theme.LocalBrandPalette
 
 enum class ParentPortalAdminModule(
@@ -816,8 +818,12 @@ fun ParentPortalAdminModuleScreen(
 
     if (showPreviewDialog) {
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = { showPreviewDialog = false },
-            title = { Text("${strings.previewDialogTitle}: ${copy.title}") },
+            title = {
+                ApplySecureDialogWindow()
+                Text("${strings.previewDialogTitle}: ${copy.title}")
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -845,8 +851,12 @@ fun ParentPortalAdminModuleScreen(
 
     activeTrialActionLabel?.let { actionLabel ->
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = { activeTrialActionLabel = null },
-            title = { Text("${strings.trialActionDialogTitle} — $actionLabel") },
+            title = {
+                ApplySecureDialogWindow()
+                Text("${strings.trialActionDialogTitle} — $actionLabel")
+            },
             text = {
                 Text(
                     text = strings.trialActionDialogTemplate

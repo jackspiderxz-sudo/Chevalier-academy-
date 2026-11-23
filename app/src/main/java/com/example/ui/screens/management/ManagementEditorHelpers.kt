@@ -1,6 +1,8 @@
 package com.example.ui.screens.management
 
 import android.net.Uri
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -194,7 +196,10 @@ internal fun ManagedItemCard(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(mStrings.deleteRecordTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.deleteRecordTitle)
+            },
             text = { Text(mStrings.deleteRecordMsg(title)) },
             confirmButton = {
                 Button(
@@ -207,7 +212,8 @@ internal fun ManagedItemCard(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text(mStrings.cancelBtn) }
-            }
+            },
+            properties = SecureDialogProperties
         )
     }
 

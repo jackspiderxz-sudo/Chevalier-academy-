@@ -1,6 +1,8 @@
 package com.example.ui.screens.management
 
 import android.app.Activity
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
 import android.content.ContextWrapper
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -42,11 +44,13 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.Approval
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.ContactPhone
 import androidx.compose.material.icons.outlined.DirectionsBus
+import androidx.compose.material.icons.outlined.DynamicFeed
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
@@ -112,6 +116,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.core.config.Version2FeatureConfig
 import com.example.core.i18n.ManagementStrings
 import com.example.core.i18n.managementStringsFor
 import com.example.core.model.AppLanguage
@@ -120,14 +125,28 @@ import com.example.data.local.entity.AccountWithPermissions
 import com.example.data.local.entity.ManagementRole
 import com.example.data.local.entity.ManagementSection
 import com.example.data.local.entity.PermissionAction
+import com.example.data.repository.AdminDashboardCard
+import com.example.data.v2.AcademicsV2AccessControl
+import com.example.data.v2.AcademicsV2Category
+import com.example.data.v2.AdminV2Card
+import com.example.ui.components.Version2UnavailableNoticeScreen
+import com.example.ui.navigation.ChevalierPublicBottomBar
 import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.AcademyHeroBannerEditorDialog
 import com.example.ui.theme.LocalBrandPalette
 import com.example.ui.viewmodel.MainViewModel
 import com.example.ui.viewmodel.ManagementAuthUiState
 import com.example.ui.viewmodel.ManagementViewModel
+import com.example.ui.viewmodel.SchoolDataViewModel
 
 enum class ManagementDestination {
     DASHBOARD,
+    ADMIN_HOME_HUB,
+    ADMIN_ACADEMY_HUB,
+    ADMIN_PARENT_HUB,
+    ADMIN_COMMON_APP_HUB,
+    ADMIN_TOOLS_HUB,
+    ADMIN_UPDATES_HUB,
     SCHOOL_PROFILE,
     LOGO_BANNER,
     ABOUT_SCHOOL,
@@ -140,6 +159,8 @@ enum class ManagementDestination {
     PHOTO_GALLERY,
     CONTACT_DETAILS,
     SOCIAL_MEDIA,
+    SCHOOL_POSTS,
+    SCHOOL_HIGHLIGHTS,
     MEDIA_STUDIO,
     STAFF_MANAGEMENT,
     APPROVAL_CENTER,
@@ -159,7 +180,15 @@ enum class ManagementDestination {
     PARENT_TEACHER_COMMUNICATION,
     PARENT_LEAVE_REQUEST,
     PARENT_SCHOOL_CIRCULARS,
-    PARENT_EMERGENCY_INFO
+    PARENT_EMERGENCY_INFO,
+    V2_HOME_HUB,
+    V2_PARENT_HUB,
+    V2_ACADEMICS_HUB,
+    V2_ACADEMICS_CATEGORY,
+    V2_ADMIN_HUB,
+    V2_SCHOOL_SETTINGS_HUB,
+    V2_PREVIEW_PUBLISH,
+    V2_OWNER_CONTROL_CENTER
 }
 
 private fun ParentPortalAdminModule.toManagementDestination(): ManagementDestination = when (this) {
@@ -191,23 +220,16 @@ private fun ManagementDestination.toParentPortalAdminModule(): ParentPortalAdmin
     else -> null
 }
 
-private data class DashboardCardItem(
-    val destination: ManagementDestination,
-    val section: ManagementSection?,
-    val title: String,
-    val countText: String,
-    val icon: ImageVector,
-    val accentColor: Color,
-    val testTag: String
-)
-
 @Composable
 fun ManagementPortalScreen(
     managementViewModel: ManagementViewModel,
     mainViewModel: MainViewModel,
     currentLanguage: AppLanguage,
     currentThemeMode: AppThemeMode,
-    onExitToPublicApp: () -> Unit
+    onExitToPublicApp: () -> Unit,
+    onOpenLanguageSelection: (() -> Unit)? = null,
+    schoolDataViewModel: SchoolDataViewModel? = null,
+    onSelectPublicTab: ((String) -> Unit)? = null
 ) {
     val authState by managementViewModel.authUiState.collectAsStateWithLifecycle()
     val statusMessage by managementViewModel.statusMessage.collectAsStateWithLifecycle()
@@ -263,13 +285,16 @@ fun ManagementPortalScreen(
                 session = state.session,
                 managementViewModel = managementViewModel,
                 mainViewModel = mainViewModel,
+                schoolDataViewModel = schoolDataViewModel,
                 mStrings = mStrings,
                 currentLanguage = currentLanguage,
                 currentThemeMode = currentThemeMode,
                 statusMessage = statusMessage,
                 errorMessage = errorMessage,
                 isBusy = isBusy,
-                onExitToPublicApp = onExitToPublicApp
+                onExitToPublicApp = onExitToPublicApp,
+                onOpenLanguageSelection = onOpenLanguageSelection,
+                onSelectPublicTab = onSelectPublicTab
             )
         }
     }
@@ -514,7 +539,10 @@ private fun ManagementPinLoginScreen(
                 onClearFeedback()
                 showRecoveryDialog = false
             },
-            title = { Text(mStrings.recoverPinTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.recoverPinTitle)
+            },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -579,18 +607,23 @@ private fun ManagementPinLoginScreen(
                     onClearFeedback()
                     showRecoveryDialog = false
                 }) { Text(mStrings.cancelBtn) }
-            }
+            },
+            properties = SecureDialogProperties
         )
     }
 
     rotatedRecoveryKey?.let { newCode ->
         AlertDialog(
             onDismissRequest = { rotatedRecoveryKey = null },
-            title = { Text(mStrings.recoveryKeyTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.recoveryKeyTitle)
+            },
             text = { Text("${mStrings.rotatedRecoveryKeyPrefix} $newCode") },
             confirmButton = {
                 Button(onClick = { rotatedRecoveryKey = null }) { Text(mStrings.okBtn) }
-            }
+            },
+            properties = SecureDialogProperties
         )
     }
 
@@ -734,19 +767,29 @@ private fun ManagementDashboardShell(
     session: AccountWithPermissions,
     managementViewModel: ManagementViewModel,
     mainViewModel: MainViewModel,
+    schoolDataViewModel: SchoolDataViewModel? = null,
     mStrings: ManagementStrings,
     currentLanguage: AppLanguage,
     currentThemeMode: AppThemeMode,
     statusMessage: String?,
     errorMessage: String?,
     isBusy: Boolean,
-    onExitToPublicApp: () -> Unit
+    onExitToPublicApp: () -> Unit,
+    onOpenLanguageSelection: (() -> Unit)? = null,
+    onSelectPublicTab: ((String) -> Unit)? = null
 ) {
     val brand = LocalBrandPalette.current
     val view = LocalView.current
-    var currentDestination by remember { mutableStateOf(ManagementDestination.DASHBOARD) }
-    var parentPortalMgmtExpanded by rememberSaveable { mutableStateOf(false) }
+    var currentDestination by rememberSaveable { mutableStateOf(ManagementDestination.DASHBOARD) }
+    var parentHubDestination by rememberSaveable { mutableStateOf<ManagementDestination?>(null) }
+    var selectedV2CategoryRoute by rememberSaveable { mutableStateOf(AcademicsV2Category.ACADEMICS.routeId) }
+    var showHeroEditorDialog by remember { mutableStateOf(false) }
+    var showAcademyHeroEditorDialog by remember { mutableStateOf(false) }
+    var permissionDeniedMessage by remember { mutableStateOf<String?>(null) }
+    val isVersion2AdminEnabled by Version2FeatureConfig.isVersion2AdminPanelEnabledFlow.collectAsStateWithLifecycle()
     val parentAdminStrings = remember(currentLanguage) { parentPortalAdminStringsFor(currentLanguage) }
+    val adminHeroBanner by managementViewModel.adminHeroBanner.collectAsStateWithLifecycle()
+    val academyHeroBanner by managementViewModel.academyHeroBanner.collectAsStateWithLifecycle()
 
     DisposableEffect(view, brand.isDark) {
         val window = generateSequence(view.context) { (it as? ContextWrapper)?.baseContext }
@@ -756,7 +799,7 @@ private fun ManagementDashboardShell(
         controller?.apply {
             show(WindowInsetsCompat.Type.statusBars())
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-            // Burgundy top bar is always dark, so keep status bar icons white & clearly visible
+            // Dark Navy Admin header is always dark, so keep status bar icons white & clearly visible
             isAppearanceLightStatusBars = false
         }
         onDispose {
@@ -765,20 +808,6 @@ private fun ManagementDashboardShell(
     }
 
     val unreadCount by managementViewModel.unreadNotificationsCount.collectAsStateWithLifecycle()
-    val pendingApprovalsCount by managementViewModel.pendingApprovalsCount.collectAsStateWithLifecycle()
-    val accounts by managementViewModel.accountsWithPermissions.collectAsStateWithLifecycle()
-    val academics by managementViewModel.allAcademics.collectAsStateWithLifecycle()
-    val courses by managementViewModel.allCourses.collectAsStateWithLifecycle()
-    val facilities by managementViewModel.allFacilities.collectAsStateWithLifecycle()
-    val routes by managementViewModel.allTransportRoutes.collectAsStateWithLifecycle()
-    val news by managementViewModel.allNews.collectAsStateWithLifecycle()
-    val announcements by managementViewModel.allAnnouncements.collectAsStateWithLifecycle()
-    val heroPhotos by managementViewModel.allHeroPhotos.collectAsStateWithLifecycle()
-    val albums by managementViewModel.allGalleryAlbumsWithMedia.collectAsStateWithLifecycle()
-    val socialLinks by managementViewModel.allSocialLinks.collectAsStateWithLifecycle()
-    val mediaItems by managementViewModel.allMediaStudioItems.collectAsStateWithLifecycle()
-    val versions by managementViewModel.allVersionHistory.collectAsStateWithLifecycle()
-    val logs by managementViewModel.visibleActivityLogs.collectAsStateWithLifecycle()
 
     var activeLeaveGuard by remember { mutableStateOf<((() -> Unit) -> Unit)?>(null) }
     fun navigateWithGuard(action: () -> Unit) {
@@ -790,15 +819,151 @@ private fun ManagementDashboardShell(
         }
     }
 
-    BackHandler(enabled = currentDestination != ManagementDestination.DASHBOARD) {
-        managementViewModel.onUserInteraction()
-        navigateWithGuard {
-            managementViewModel.clearFeedback()
-            currentDestination = ManagementDestination.DASHBOARD
+    fun canAccessDestination(destination: ManagementDestination): Boolean {
+        return when (destination) {
+            ManagementDestination.DASHBOARD,
+            ManagementDestination.GLOBAL_SEARCH -> true
+            ManagementDestination.ADMIN_HOME_HUB ->
+                managementViewModel.canAccessAdminCard(AdminDashboardCard.HOME_PAGE)
+            ManagementDestination.ADMIN_ACADEMY_HUB ->
+                managementViewModel.canAccessAdminCard(AdminDashboardCard.ACADEMY)
+            ManagementDestination.ADMIN_PARENT_HUB ->
+                managementViewModel.canAccessAdminCard(AdminDashboardCard.PARENT)
+            ManagementDestination.ADMIN_COMMON_APP_HUB ->
+                managementViewModel.canAccessAdminCard(AdminDashboardCard.COMMON_APP)
+            ManagementDestination.ADMIN_TOOLS_HUB ->
+                managementViewModel.canAccessAdminCard(AdminDashboardCard.MANAGEMENT_TOOLS)
+            ManagementDestination.ADMIN_UPDATES_HUB ->
+                managementViewModel.canAccessAdminCard(AdminDashboardCard.UPDATES)
+            ManagementDestination.SCHOOL_PROFILE ->
+                managementViewModel.hasPermission(ManagementSection.SCHOOL_PROFILE, PermissionAction.VIEW)
+            ManagementDestination.LOGO_BANNER ->
+                managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.VIEW)
+            ManagementDestination.ABOUT_SCHOOL ->
+                managementViewModel.hasPermission(ManagementSection.ABOUT_SCHOOL, PermissionAction.VIEW)
+            ManagementDestination.ACADEMICS ->
+                managementViewModel.hasPermission(ManagementSection.ACADEMICS, PermissionAction.VIEW)
+            ManagementDestination.COURSES ->
+                managementViewModel.hasPermission(ManagementSection.HIGHER_SECONDARY_COURSES, PermissionAction.VIEW)
+            ManagementDestination.FACILITIES ->
+                managementViewModel.hasPermission(ManagementSection.FACILITIES, PermissionAction.VIEW)
+            ManagementDestination.TRANSPORT ->
+                managementViewModel.hasPermission(ManagementSection.TRANSPORT, PermissionAction.VIEW)
+            ManagementDestination.NEWS ->
+                managementViewModel.hasPermission(ManagementSection.NEWS, PermissionAction.VIEW)
+            ManagementDestination.ANNOUNCEMENTS ->
+                managementViewModel.hasPermission(ManagementSection.ANNOUNCEMENTS, PermissionAction.VIEW)
+            ManagementDestination.PHOTO_GALLERY ->
+                managementViewModel.hasPermission(ManagementSection.PHOTO_GALLERY, PermissionAction.VIEW)
+            ManagementDestination.CONTACT_DETAILS ->
+                managementViewModel.hasPermission(ManagementSection.CONTACT_DETAILS, PermissionAction.VIEW)
+            ManagementDestination.SOCIAL_MEDIA ->
+                managementViewModel.hasPermission(ManagementSection.SOCIAL_MEDIA, PermissionAction.VIEW)
+            ManagementDestination.SCHOOL_POSTS ->
+                managementViewModel.hasPermission(ManagementSection.SCHOOL_POSTS, PermissionAction.VIEW)
+            ManagementDestination.SCHOOL_HIGHLIGHTS ->
+                managementViewModel.hasPermission(ManagementSection.SCHOOL_HIGHLIGHTS, PermissionAction.VIEW)
+            ManagementDestination.MEDIA_STUDIO ->
+                managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.VIEW)
+            ManagementDestination.STAFF_MANAGEMENT ->
+                managementViewModel.hasPermission(ManagementSection.STAFF_MANAGEMENT, PermissionAction.VIEW)
+            ManagementDestination.APPROVAL_CENTER ->
+                managementViewModel.isMasterAdmin() ||
+                    ManagementSection.entries.any {
+                        managementViewModel.hasPermission(it, PermissionAction.PUBLISH) ||
+                            managementViewModel.hasPermission(it, PermissionAction.EDIT)
+                    }
+            ManagementDestination.VERSION_HISTORY ->
+                managementViewModel.isMasterAdmin() ||
+                    ManagementSection.entries.any { managementViewModel.hasPermission(it, PermissionAction.VIEW) }
+            ManagementDestination.ACTIVITY_LOG ->
+                managementViewModel.hasPermission(ManagementSection.ACTIVITY_LOG, PermissionAction.VIEW)
+            ManagementDestination.NOTIFICATIONS ->
+                managementViewModel.hasPermission(ManagementSection.NOTIFICATIONS, PermissionAction.VIEW)
+            ManagementDestination.BACKUP_RESTORE ->
+                managementViewModel.hasPermission(ManagementSection.BACKUP_RESTORE, PermissionAction.VIEW)
+            ManagementDestination.APP_SETTINGS ->
+                managementViewModel.hasPermission(ManagementSection.APP_SETTINGS, PermissionAction.VIEW)
+            ManagementDestination.V2_HOME_HUB,
+            ManagementDestination.V2_PARENT_HUB,
+            ManagementDestination.V2_ACADEMICS_HUB,
+            ManagementDestination.V2_ACADEMICS_CATEGORY,
+            ManagementDestination.V2_ADMIN_HUB,
+            ManagementDestination.V2_SCHOOL_SETTINGS_HUB,
+            ManagementDestination.V2_PREVIEW_PUBLISH,
+            ManagementDestination.V2_OWNER_CONTROL_CENTER -> true
+            else -> {
+                if (destination.toParentPortalAdminModule() != null) {
+                    managementViewModel.canAccessAdminCard(AdminDashboardCard.PARENT)
+                } else {
+                    false
+                }
+            }
         }
     }
+
+    fun navigateToDestination(
+        target: ManagementDestination,
+        labelForError: String,
+        fromHub: ManagementDestination? = null
+    ) {
+        managementViewModel.onUserInteraction()
+        if (!canAccessDestination(target)) {
+            permissionDeniedMessage = "Access restricted: You do not have permission to open $labelForError."
+            return
+        }
+        navigateWithGuard {
+            permissionDeniedMessage = null
+            managementViewModel.clearFeedback()
+            parentHubDestination = fromHub
+            currentDestination = target
+        }
+    }
+
+    fun navigateToAdminCard(card: AdminDashboardCard) {
+        val target = when (card) {
+            AdminDashboardCard.HOME_PAGE -> ManagementDestination.ADMIN_HOME_HUB
+            AdminDashboardCard.ACADEMY -> ManagementDestination.ADMIN_ACADEMY_HUB
+            AdminDashboardCard.PARENT -> ManagementDestination.ADMIN_PARENT_HUB
+            AdminDashboardCard.CONTACT -> ManagementDestination.CONTACT_DETAILS
+            AdminDashboardCard.STAFF_MANAGEMENT -> ManagementDestination.STAFF_MANAGEMENT
+            AdminDashboardCard.COMMON_APP -> ManagementDestination.ADMIN_COMMON_APP_HUB
+            AdminDashboardCard.MANAGEMENT_TOOLS -> ManagementDestination.ADMIN_TOOLS_HUB
+            AdminDashboardCard.UPDATES -> ManagementDestination.ADMIN_UPDATES_HUB
+        }
+        navigateToDestination(target = target, labelForError = card.title, fromHub = null)
+    }
+
+    fun navigateBackOneStep() {
+        managementViewModel.onUserInteraction()
+        navigateWithGuard {
+            permissionDeniedMessage = null
+            managementViewModel.clearFeedback()
+            when {
+                currentDestination == ManagementDestination.V2_ACADEMICS_CATEGORY -> {
+                    currentDestination = ManagementDestination.V2_ACADEMICS_HUB
+                }
+                currentDestination.toParentPortalAdminModule() != null -> {
+                    currentDestination = ManagementDestination.ADMIN_PARENT_HUB
+                    parentHubDestination = null
+                }
+                parentHubDestination != null && currentDestination != parentHubDestination -> {
+                    currentDestination = parentHubDestination!!
+                    parentHubDestination = null
+                }
+                else -> {
+                    currentDestination = ManagementDestination.DASHBOARD
+                    parentHubDestination = null
+                }
+            }
+        }
+    }
+
+    BackHandler(enabled = currentDestination != ManagementDestination.DASHBOARD) {
+        navigateBackOneStep()
+    }
     BackHandler(enabled = currentDestination == ManagementDestination.DASHBOARD) {
-        onExitToPublicApp()
+        navigateWithGuard(onExitToPublicApp)
     }
 
     val roleLabel = when (session.account.role) {
@@ -808,7 +973,13 @@ private fun ManagementDashboardShell(
     }
 
     val dashboardTitle = when (currentDestination) {
-        ManagementDestination.DASHBOARD -> mStrings.portalTitle
+        ManagementDestination.DASHBOARD -> "CHEVALIER ACADEMY"
+        ManagementDestination.ADMIN_HOME_HUB -> AdminDashboardCard.HOME_PAGE.title
+        ManagementDestination.ADMIN_ACADEMY_HUB -> AdminDashboardCard.ACADEMY.title
+        ManagementDestination.ADMIN_PARENT_HUB -> AdminDashboardCard.PARENT.title
+        ManagementDestination.ADMIN_COMMON_APP_HUB -> AdminDashboardCard.COMMON_APP.title
+        ManagementDestination.ADMIN_TOOLS_HUB -> AdminDashboardCard.MANAGEMENT_TOOLS.title
+        ManagementDestination.ADMIN_UPDATES_HUB -> AdminDashboardCard.UPDATES.title
         ManagementDestination.SCHOOL_PROFILE -> mStrings.cardSchoolProfile
         ManagementDestination.LOGO_BANNER -> mStrings.cardLogoBanner
         ManagementDestination.ABOUT_SCHOOL -> mStrings.cardAboutSchool
@@ -821,6 +992,8 @@ private fun ManagementDashboardShell(
         ManagementDestination.PHOTO_GALLERY -> mStrings.cardPhotoGallery
         ManagementDestination.CONTACT_DETAILS -> mStrings.cardContactDetails
         ManagementDestination.SOCIAL_MEDIA -> mStrings.cardSocialMedia
+        ManagementDestination.SCHOOL_POSTS -> mStrings.cardSchoolPosts
+        ManagementDestination.SCHOOL_HIGHLIGHTS -> mStrings.cardSchoolHighlights
         ManagementDestination.MEDIA_STUDIO -> mStrings.cardMediaStudio
         ManagementDestination.STAFF_MANAGEMENT -> mStrings.cardStaffManagement
         ManagementDestination.APPROVAL_CENTER -> mStrings.cardApprovalCenter
@@ -830,9 +1003,63 @@ private fun ManagementDashboardShell(
         ManagementDestination.GLOBAL_SEARCH -> mStrings.cardGlobalSearch
         ManagementDestination.BACKUP_RESTORE -> mStrings.cardBackupRestore
         ManagementDestination.APP_SETTINGS -> mStrings.cardAppSettings
+        ManagementDestination.V2_HOME_HUB -> AdminV2Card.HOME_PAGE.title
+        ManagementDestination.V2_PARENT_HUB -> AdminV2Card.PARENT.title
+        ManagementDestination.V2_ACADEMICS_HUB -> "Academics Management"
+        ManagementDestination.V2_ACADEMICS_CATEGORY ->
+            AcademicsV2Category.fromRouteId(selectedV2CategoryRoute)?.title ?: "Academics"
+        ManagementDestination.V2_ADMIN_HUB -> AdminV2Card.ADMIN.title
+        ManagementDestination.V2_SCHOOL_SETTINGS_HUB -> AdminV2Card.SCHOOL_SETTINGS.title
+        ManagementDestination.V2_PREVIEW_PUBLISH -> AdminV2Card.PREVIEW_PUBLISH.title
+        ManagementDestination.V2_OWNER_CONTROL_CENTER -> AdminV2Card.SCHOOL_OWNER_CONTROL_CENTER.title
         else -> currentDestination.toParentPortalAdminModule()
             ?.let { parentPortalAdminTitle(it, currentLanguage) }
-            ?: mStrings.portalTitle
+            ?: "CHEVALIER ACADEMY"
+    }
+
+    val canEditHeroBanner = managementViewModel.canEditAdminHeroBanner()
+    val canEditAcademyHeroBanner = managementViewModel.canEditAcademyHeroBanner()
+    val canOpenAppSettings = managementViewModel.hasPermission(ManagementSection.APP_SETTINGS, PermissionAction.VIEW)
+
+    if (showHeroEditorDialog && canEditHeroBanner) {
+        AdminHeroBannerEditorDialog(
+            initialConfig = adminHeroBanner,
+            adminDisplayName = session.account.displayName,
+            isBusy = isBusy,
+            onPickBackgroundImage = { uri, onImported ->
+                managementViewModel.importAdminHeroImage(uri, onImported)
+            },
+            onSave = { line1, line2, line3, imageUri ->
+                managementViewModel.saveAdminHeroBanner(
+                    titleLine1 = line1,
+                    welcomeLine2 = line2,
+                    subtitleLine3 = line3,
+                    backgroundImageUri = imageUri,
+                    onSaved = { showHeroEditorDialog = false }
+                )
+            },
+            onDismiss = { showHeroEditorDialog = false }
+        )
+    }
+
+    if (showAcademyHeroEditorDialog && canEditAcademyHeroBanner) {
+        AcademyHeroBannerEditorDialog(
+            initialConfig = academyHeroBanner,
+            isBusy = isBusy,
+            onPickBannerImage = { uri, onImported ->
+                managementViewModel.importAcademyHeroImage(uri, onImported)
+            },
+            onPublish = { imageUri, overlayTitle, overlaySubtitle, publishNow ->
+                managementViewModel.saveAcademyHeroBanner(
+                    imageUri = imageUri,
+                    overlayTitle = overlayTitle,
+                    overlaySubtitle = overlaySubtitle,
+                    publishNow = publishNow,
+                    onSaved = { showAcademyHeroEditorDialog = false }
+                )
+            },
+            onDismiss = { showAcademyHeroEditorDialog = false }
+        )
     }
 
     Scaffold(
@@ -847,123 +1074,83 @@ private fun ManagementDashboardShell(
                 }
             }
             .testTag("management_dashboard_shell"),
+        containerColor = if (currentDestination == ManagementDestination.DASHBOARD) {
+            AdminDashboardBlueprint.NavyBackground
+        } else {
+            MaterialTheme.colorScheme.background
+        },
         contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
-            Surface(
-                color = brand.burgundy,
-                contentColor = Color.White,
-                shadowElevation = 4.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                        .displayCutoutPadding()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            if (currentDestination != ManagementDestination.DASHBOARD) {
-                                IconButton(
-                                    onClick = {
-                                        managementViewModel.onUserInteraction()
-                                        navigateWithGuard {
-                                            managementViewModel.clearFeedback()
-                                            currentDestination = ManagementDestination.DASHBOARD
-                                        }
-                                    },
-                                    modifier = Modifier.testTag("mgmt_subscreen_back_btn")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = mStrings.backToDashboardDesc,
-                                        tint = Color.White
-                                    )
-                                }
-                            } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.chevalier_emblem),
-                                    contentDescription = "Chevalier Academy",
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                            }
-                            Column {
-                                Text(
-                                    text = dashboardTitle,
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "${session.account.displayName} • $roleLabel",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = brand.royalGold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                AdminDashboardTopBar(
+                    isDashboardRoot = currentDestination == ManagementDestination.DASHBOARD,
+                    title = dashboardTitle,
+                    adminDisplayName = session.account.displayName,
+                    adminRoleLabel = roleLabel,
+                    unreadNotificationsCount = unreadCount,
+                    canEditHeroBanner = canEditHeroBanner,
+                    canOpenSettings = canOpenAppSettings,
+                    onBackClick = {
+                        if (currentDestination == ManagementDestination.DASHBOARD) {
+                            navigateWithGuard(onExitToPublicApp)
+                        } else {
+                            navigateBackOneStep()
                         }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (managementViewModel.hasPermission(ManagementSection.NOTIFICATIONS, PermissionAction.VIEW)) {
-                                IconButton(
-                                    onClick = {
-                                        managementViewModel.onUserInteraction()
-                                        navigateWithGuard {
-                                            managementViewModel.clearFeedback()
-                                            currentDestination = ManagementDestination.NOTIFICATIONS
-                                        }
-                                    },
-                                    modifier = Modifier.testTag("mgmt_top_notifications_btn")
-                                ) {
-                                    BadgedBox(
-                                        badge = {
-                                            if (unreadCount > 0) {
-                                                Badge(containerColor = brand.royalGold, contentColor = Color.Black) {
-                                                    Text(unreadCount.toString())
-                                                }
-                                            }
-                                        }
-                                    ) {
-                                        Icon(Icons.Outlined.Notifications, contentDescription = mStrings.notificationsLabel, tint = Color.White)
-                                    }
-                                }
-                            }
-
-                            IconButton(
-                                onClick = { navigateWithGuard(onExitToPublicApp) },
-                                modifier = Modifier.testTag("mgmt_top_public_btn")
-                            ) {
-                                Icon(Icons.Outlined.Public, contentDescription = mStrings.returnPublicBtn, tint = Color.White)
-                            }
-
-                            IconButton(
-                                onClick = { navigateWithGuard { managementViewModel.logout() } },
-                                modifier = Modifier.testTag("mgmt_top_logout_btn")
-                            ) {
-                                Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = mStrings.logoutBtn, tint = Color.White)
-                            }
-                        }
-                    }
-                    if (isBusy) {
-                        LinearProgressIndicator(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = brand.royalGold
+                    },
+                    onSearchClick = {
+                        managementViewModel.clearAdminDashboardSearch()
+                        navigateToDestination(
+                            target = ManagementDestination.GLOBAL_SEARCH,
+                            labelForError = mStrings.cardGlobalSearch
                         )
-                    }
+                    },
+                    onNotificationsClick = {
+                        navigateToDestination(
+                            target = ManagementDestination.NOTIFICATIONS,
+                            labelForError = mStrings.cardNotifications
+                        )
+                    },
+                    onEditHeroBannerClick = {
+                        if (canEditHeroBanner) {
+                            permissionDeniedMessage = null
+                            showHeroEditorDialog = true
+                        } else {
+                            permissionDeniedMessage = "Access restricted: You do not have permission to edit the Admin Hero Banner."
+                        }
+                    },
+                    onOpenSettingsClick = {
+                        navigateToDestination(
+                            target = ManagementDestination.APP_SETTINGS,
+                            labelForError = mStrings.cardAppSettings
+                        )
+                    },
+                    onExitToPublicApp = { navigateWithGuard(onExitToPublicApp) },
+                    onLogoutClick = { navigateWithGuard { managementViewModel.logout() } }
+                )
+                if (isBusy) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = AdminDashboardBlueprint.OutlineViolet
+                    )
                 }
+            }
+        },
+        bottomBar = {
+            if (currentDestination == ManagementDestination.DASHBOARD) {
+                ChevalierPublicBottomBar(
+                    selectedRoute = null,
+                    currentThemeMode = currentThemeMode,
+                    onSelectRoute = { route ->
+                        navigateWithGuard {
+                            val tabHandler = onSelectPublicTab
+                            if (tabHandler != null) {
+                                tabHandler(route)
+                            } else {
+                                onExitToPublicApp()
+                            }
+                        }
+                    }
+                )
             }
         }
     ) { innerPadding ->
@@ -972,16 +1159,20 @@ private fun ManagementDashboardShell(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            val effectiveError = permissionDeniedMessage ?: errorMessage
             val handlesOwnBanners = currentDestination == ManagementDestination.SCHOOL_PROFILE ||
                 currentDestination == ManagementDestination.ABOUT_SCHOOL ||
                 currentDestination == ManagementDestination.CONTACT_DETAILS
-            if (!handlesOwnBanners && (!statusMessage.isNullOrBlank() || !errorMessage.isNullOrBlank())) {
+            if (!handlesOwnBanners && (!statusMessage.isNullOrBlank() || !effectiveError.isNullOrBlank())) {
                 Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                    if (!errorMessage.isNullOrBlank()) {
+                    if (!effectiveError.isNullOrBlank()) {
                         ErrorBanner(
-                            message = errorMessage,
+                            message = effectiveError,
                             dismissLabel = mStrings.dismissBtn,
-                            onDismiss = { managementViewModel.clearFeedback() }
+                            onDismiss = {
+                                permissionDeniedMessage = null
+                                managementViewModel.clearFeedback()
+                            }
                         )
                     } else if (!statusMessage.isNullOrBlank()) {
                         SuccessBanner(
@@ -993,236 +1184,587 @@ private fun ManagementDashboardShell(
                 }
             }
 
-            when (currentDestination) {
-                ManagementDestination.DASHBOARD -> {
-                    val cards = listOf(
-                        DashboardCardItem(ManagementDestination.SCHOOL_PROFILE, ManagementSection.SCHOOL_PROFILE, mStrings.cardSchoolProfile, "1", Icons.Outlined.Badge, brand.burgundy, "dash_card_profile"),
-                        DashboardCardItem(ManagementDestination.LOGO_BANNER, ManagementSection.LOGO_BANNER, mStrings.cardLogoBanner, "${heroPhotos.size}", Icons.Outlined.Image, brand.forestGreen, "dash_card_banner"),
-                        DashboardCardItem(ManagementDestination.ABOUT_SCHOOL, ManagementSection.ABOUT_SCHOOL, mStrings.cardAboutSchool, "1", Icons.Outlined.Info, brand.burgundy, "dash_card_about"),
-                        DashboardCardItem(ManagementDestination.ACADEMICS, ManagementSection.ACADEMICS, mStrings.cardAcademics, "${academics.size}", Icons.Outlined.School, brand.forestGreen, "dash_card_academics"),
-                        DashboardCardItem(ManagementDestination.COURSES, ManagementSection.HIGHER_SECONDARY_COURSES, mStrings.cardCourses, "${courses.size}", Icons.AutoMirrored.Outlined.MenuBook, brand.burgundy, "dash_card_courses"),
-                        DashboardCardItem(ManagementDestination.FACILITIES, ManagementSection.FACILITIES, mStrings.cardFacilities, "${facilities.size}", Icons.Outlined.Apartment, brand.forestGreen, "dash_card_facilities"),
-                        DashboardCardItem(ManagementDestination.TRANSPORT, ManagementSection.TRANSPORT, mStrings.cardTransport, "${routes.size}", Icons.Outlined.DirectionsBus, brand.burgundy, "dash_card_transport"),
-                        DashboardCardItem(ManagementDestination.NEWS, ManagementSection.NEWS, mStrings.cardNews, "${news.size}", Icons.Outlined.Newspaper, brand.forestGreen, "dash_card_news"),
-                        DashboardCardItem(ManagementDestination.ANNOUNCEMENTS, ManagementSection.ANNOUNCEMENTS, mStrings.cardAnnouncements, "${announcements.size}", Icons.Outlined.Campaign, brand.burgundy, "dash_card_announcements"),
-                        DashboardCardItem(ManagementDestination.PHOTO_GALLERY, ManagementSection.PHOTO_GALLERY, mStrings.cardPhotoGallery, "${albums.size}", Icons.Outlined.PhotoLibrary, brand.forestGreen, "dash_card_gallery"),
-                        DashboardCardItem(ManagementDestination.CONTACT_DETAILS, ManagementSection.CONTACT_DETAILS, mStrings.cardContactDetails, "1", Icons.Outlined.ContactPhone, brand.burgundy, "dash_card_contact"),
-                        DashboardCardItem(ManagementDestination.SOCIAL_MEDIA, ManagementSection.SOCIAL_MEDIA, mStrings.cardSocialMedia, "${socialLinks.size}", Icons.Outlined.Share, brand.forestGreen, "dash_card_social"),
-                        DashboardCardItem(ManagementDestination.MEDIA_STUDIO, ManagementSection.MEDIA_STUDIO, mStrings.cardMediaStudio, "${mediaItems.size}", Icons.Outlined.PermMedia, brand.burgundy, "dash_card_media_studio"),
-                        DashboardCardItem(ManagementDestination.STAFF_MANAGEMENT, ManagementSection.STAFF_MANAGEMENT, mStrings.cardStaffManagement, "${accounts.size}", Icons.Outlined.AdminPanelSettings, brand.forestGreen, "dash_card_staff"),
-                        DashboardCardItem(ManagementDestination.APPROVAL_CENTER, null, mStrings.cardApprovalCenter, "$pendingApprovalsCount", Icons.Outlined.Approval, brand.burgundy, "dash_card_approvals"),
-                        DashboardCardItem(ManagementDestination.VERSION_HISTORY, null, mStrings.cardVersionHistory, "${versions.size}", Icons.Outlined.History, brand.forestGreen, "dash_card_history"),
-                        DashboardCardItem(ManagementDestination.ACTIVITY_LOG, ManagementSection.ACTIVITY_LOG, mStrings.cardActivityLog, "${logs.size}", Icons.AutoMirrored.Outlined.ReceiptLong, brand.burgundy, "dash_card_activity_log"),
-                        DashboardCardItem(ManagementDestination.NOTIFICATIONS, ManagementSection.NOTIFICATIONS, mStrings.cardNotifications, "$unreadCount", Icons.Outlined.Notifications, brand.forestGreen, "dash_card_notifications"),
-                        DashboardCardItem(ManagementDestination.GLOBAL_SEARCH, null, mStrings.cardGlobalSearch, "11", Icons.Outlined.Search, brand.burgundy, "dash_card_search"),
-                        DashboardCardItem(ManagementDestination.BACKUP_RESTORE, ManagementSection.BACKUP_RESTORE, mStrings.cardBackupRestore, "AES", Icons.Outlined.Backup, brand.forestGreen, "dash_card_backup"),
-                        DashboardCardItem(ManagementDestination.APP_SETTINGS, ManagementSection.APP_SETTINGS, mStrings.cardAppSettings, currentLanguage.code.uppercase(), Icons.Outlined.Settings, brand.burgundy, "dash_card_settings")
-                    )
-
-                    val visibleCards = cards.filter { card ->
-                        when (card.destination) {
-                            ManagementDestination.APPROVAL_CENTER -> {
-                                managementViewModel.isMasterAdmin() ||
-                                    ManagementSection.entries.any {
-                                        managementViewModel.hasPermission(it, PermissionAction.PUBLISH) ||
-                                            managementViewModel.hasPermission(it, PermissionAction.EDIT)
+            if (!canAccessDestination(currentDestination)) {
+                AdminAccessDeniedScreen(sectionTitle = dashboardTitle)
+            } else {
+                when (currentDestination) {
+                    ManagementDestination.DASHBOARD -> {
+                        if (isVersion2AdminEnabled) {
+                            AdminV2DashboardGrid(
+                                session = session,
+                                managementViewModel = managementViewModel,
+                                onSelectAdminCard = { card ->
+                                    managementViewModel.onUserInteraction()
+                                    managementViewModel.clearFeedback()
+                                    if (!AcademicsV2AccessControl.canAccessAdminCard(session, card)) {
+                                        permissionDeniedMessage = "Access restricted for ${card.title}."
+                                        return@AdminV2DashboardGrid
                                     }
-                            }
-                            ManagementDestination.VERSION_HISTORY -> {
-                                managementViewModel.isMasterAdmin() ||
-                                    ManagementSection.entries.any { managementViewModel.hasPermission(it, PermissionAction.VIEW) }
-                            }
-                            ManagementDestination.GLOBAL_SEARCH -> true
-                            else -> card.section == null || managementViewModel.hasPermission(card.section, PermissionAction.VIEW)
+                                    currentDestination = when (card) {
+                                        AdminV2Card.HOME_PAGE -> ManagementDestination.V2_HOME_HUB
+                                        AdminV2Card.PARENT -> ManagementDestination.V2_PARENT_HUB
+                                        AdminV2Card.ACADEMICS -> ManagementDestination.V2_ACADEMICS_HUB
+                                        AdminV2Card.CONTACT -> ManagementDestination.CONTACT_DETAILS
+                                        AdminV2Card.ADMIN -> ManagementDestination.V2_ADMIN_HUB
+                                        AdminV2Card.SCHOOL_SETTINGS -> ManagementDestination.V2_SCHOOL_SETTINGS_HUB
+                                        AdminV2Card.PREVIEW_PUBLISH -> ManagementDestination.V2_PREVIEW_PUBLISH
+                                        AdminV2Card.SCHOOL_OWNER_CONTROL_CENTER -> ManagementDestination.V2_OWNER_CONTROL_CENTER
+                                    }
+                                }
+                            )
+                        } else {
+                            AdminDashboardHomeContent(
+                                session = session,
+                                heroConfig = adminHeroBanner,
+                                canEditHeroBanner = canEditHeroBanner,
+                                canAccessCard = { card -> managementViewModel.canAccessAdminCard(card) },
+                                onEditHeroBanner = {
+                                    if (canEditHeroBanner) {
+                                        permissionDeniedMessage = null
+                                        showHeroEditorDialog = true
+                                    } else {
+                                        permissionDeniedMessage = "Access restricted: You do not have permission to edit the Admin Hero Banner."
+                                    }
+                                },
+                                onCardClick = { card -> navigateToAdminCard(card) }
+                            )
                         }
                     }
 
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 156.dp),
-                        contentPadding = PaddingValues(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("management_dashboard_grid")
-                    ) {
-                        item(
-                            key = "parent_portal_mgmt_header",
-                            span = { GridItemSpan(maxLineSpan) }
-                        ) {
-                            ParentPortalManagementExpandableHeader(
-                                strings = parentAdminStrings,
-                                expanded = parentPortalMgmtExpanded,
-                                onToggleExpand = {
-                                    managementViewModel.onUserInteraction()
-                                    parentPortalMgmtExpanded = !parentPortalMgmtExpanded
+                    ManagementDestination.ADMIN_HOME_HUB -> {
+                        AdminSectionHubScreen(
+                            hubTestTag = "admin_hub_home_page",
+                            subtitle = "Manage public Home Page hero banners, school posts, highlights, and media assets.",
+                            items = listOf(
+                                AdminHubRouteItem(
+                                    id = "logo_banner",
+                                    title = mStrings.cardLogoBanner,
+                                    description = "Manage public campus hero photos and banner sequence.",
+                                    icon = Icons.Outlined.Image,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_logo_banner",
+                                    onClick = { navigateToDestination(ManagementDestination.LOGO_BANNER, mStrings.cardLogoBanner, ManagementDestination.ADMIN_HOME_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "school_posts",
+                                    title = mStrings.cardSchoolPosts,
+                                    description = "Create, review, and publish Home feed posts.",
+                                    icon = Icons.Outlined.DynamicFeed,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.SCHOOL_POSTS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_school_posts",
+                                    onClick = { navigateToDestination(ManagementDestination.SCHOOL_POSTS, mStrings.cardSchoolPosts, ManagementDestination.ADMIN_HOME_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "school_highlights",
+                                    title = mStrings.cardSchoolHighlights,
+                                    description = "Manage active school highlights featured on the Home Page.",
+                                    icon = Icons.Outlined.AutoAwesome,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.SCHOOL_HIGHLIGHTS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_school_highlights",
+                                    onClick = { navigateToDestination(ManagementDestination.SCHOOL_HIGHLIGHTS, mStrings.cardSchoolHighlights, ManagementDestination.ADMIN_HOME_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "media_studio",
+                                    title = mStrings.cardMediaStudio,
+                                    description = "Upload and organize managed campus photography.",
+                                    icon = Icons.Outlined.PermMedia,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_media_studio",
+                                    onClick = { navigateToDestination(ManagementDestination.MEDIA_STUDIO, mStrings.cardMediaStudio, ManagementDestination.ADMIN_HOME_HUB) }
+                                )
+                            )
+                        )
+                    }
+
+                    ManagementDestination.ADMIN_ACADEMY_HUB -> {
+                        AdminSectionHubScreen(
+                            hubTestTag = "admin_hub_academy",
+                            subtitle = "Manage Academy Hero Banner, academic programs, courses, facilities, transport, gallery, and school overview.",
+                            items = listOf(
+                                AdminHubRouteItem(
+                                    id = "academy_hero_banner",
+                                    title = "Academy Hero Banner",
+                                    description = "Upload or replace the Academy Page hero banner image with optional overlay text.",
+                                    icon = Icons.Outlined.PhotoLibrary,
+                                    isAllowed = canEditAcademyHeroBanner,
+                                    testTag = "admin_hub_open_academy_hero_banner",
+                                    onClick = { showAcademyHeroEditorDialog = true }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "academics",
+                                    title = mStrings.cardAcademics,
+                                    description = "Edit academic curriculum and department details.",
+                                    icon = Icons.Outlined.School,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.ACADEMICS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_academics",
+                                    onClick = { navigateToDestination(ManagementDestination.ACADEMICS, mStrings.cardAcademics, ManagementDestination.ADMIN_ACADEMY_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "courses",
+                                    title = mStrings.cardCourses,
+                                    description = "Manage higher secondary streams and subject groups.",
+                                    icon = Icons.AutoMirrored.Outlined.MenuBook,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.HIGHER_SECONDARY_COURSES, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_courses",
+                                    onClick = { navigateToDestination(ManagementDestination.COURSES, mStrings.cardCourses, ManagementDestination.ADMIN_ACADEMY_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "facilities",
+                                    title = mStrings.cardFacilities,
+                                    description = "Manage campus laboratories, library, and facilities.",
+                                    icon = Icons.Outlined.Apartment,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.FACILITIES, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_facilities",
+                                    onClick = { navigateToDestination(ManagementDestination.FACILITIES, mStrings.cardFacilities, ManagementDestination.ADMIN_ACADEMY_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "transport",
+                                    title = mStrings.cardTransport,
+                                    description = "Manage school bus routes and stop schedules.",
+                                    icon = Icons.Outlined.DirectionsBus,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.TRANSPORT, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_transport",
+                                    onClick = { navigateToDestination(ManagementDestination.TRANSPORT, mStrings.cardTransport, ManagementDestination.ADMIN_ACADEMY_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "photo_gallery",
+                                    title = mStrings.cardPhotoGallery,
+                                    description = "Manage official school photo albums and event galleries.",
+                                    icon = Icons.Outlined.PhotoLibrary,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.PHOTO_GALLERY, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_gallery",
+                                    onClick = { navigateToDestination(ManagementDestination.PHOTO_GALLERY, mStrings.cardPhotoGallery, ManagementDestination.ADMIN_ACADEMY_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "about_school",
+                                    title = mStrings.cardAboutSchool,
+                                    description = "Edit school history, vision, mission, and leadership details.",
+                                    icon = Icons.Outlined.Info,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.ABOUT_SCHOOL, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_about",
+                                    onClick = { navigateToDestination(ManagementDestination.ABOUT_SCHOOL, mStrings.cardAboutSchool, ManagementDestination.ADMIN_ACADEMY_HUB) }
+                                )
+                            )
+                        )
+                    }
+
+                    ManagementDestination.ADMIN_PARENT_HUB -> {
+                        val parentItems = buildList {
+                            add(
+                                AdminHubRouteItem(
+                                    id = "parent_announcements",
+                                    title = mStrings.cardAnnouncements,
+                                    description = "Manage school notices and parent-facing announcements.",
+                                    icon = Icons.Outlined.Campaign,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.ANNOUNCEMENTS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_parent_announcements",
+                                    onClick = { navigateToDestination(ManagementDestination.ANNOUNCEMENTS, mStrings.cardAnnouncements, ManagementDestination.ADMIN_PARENT_HUB) }
+                                )
+                            )
+                            ParentPortalAdminModule.entries.forEach { module ->
+                                val copy = parentAdminStrings.modules.getValue(module)
+                                add(
+                                    AdminHubRouteItem(
+                                        id = "ppm_${module.key}",
+                                        title = copy.title,
+                                        description = copy.intro,
+                                        icon = module.icon,
+                                        isAllowed = managementViewModel.canAccessAdminCard(AdminDashboardCard.PARENT),
+                                        testTag = "ppm_submenu_card_${module.key}",
+                                        onClick = {
+                                            navigateToDestination(
+                                                target = module.toManagementDestination(),
+                                                labelForError = copy.title,
+                                                fromHub = ManagementDestination.ADMIN_PARENT_HUB
+                                            )
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                        AdminSectionHubScreen(
+                            hubTestTag = "admin_hub_parent",
+                            subtitle = parentAdminStrings.sectionSubtitle,
+                            items = parentItems
+                        )
+                    }
+
+                    ManagementDestination.ADMIN_COMMON_APP_HUB -> {
+                        AdminSectionHubScreen(
+                            hubTestTag = "admin_hub_common_app",
+                            subtitle = "Manage general app preferences, school identity, and official social links.",
+                            items = listOf(
+                                AdminHubRouteItem(
+                                    id = "app_settings",
+                                    title = mStrings.cardAppSettings,
+                                    description = "Configure language, theme mode, and app preferences.",
+                                    icon = Icons.Outlined.Settings,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.APP_SETTINGS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_app_settings",
+                                    onClick = { navigateToDestination(ManagementDestination.APP_SETTINGS, mStrings.cardAppSettings, ManagementDestination.ADMIN_COMMON_APP_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "school_profile",
+                                    title = mStrings.cardSchoolProfile,
+                                    description = "Update school name, motto, and official affiliation details.",
+                                    icon = Icons.Outlined.Badge,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.SCHOOL_PROFILE, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_school_profile",
+                                    onClick = { navigateToDestination(ManagementDestination.SCHOOL_PROFILE, mStrings.cardSchoolProfile, ManagementDestination.ADMIN_COMMON_APP_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "social_media",
+                                    title = mStrings.cardSocialMedia,
+                                    description = "Manage verified official school social media links.",
+                                    icon = Icons.Outlined.Share,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.SOCIAL_MEDIA, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_social_media",
+                                    onClick = { navigateToDestination(ManagementDestination.SOCIAL_MEDIA, mStrings.cardSocialMedia, ManagementDestination.ADMIN_COMMON_APP_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "logo_banner",
+                                    title = mStrings.cardLogoBanner,
+                                    description = "Manage campus logo and public banner assets.",
+                                    icon = Icons.Outlined.Image,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_common_logo",
+                                    onClick = { navigateToDestination(ManagementDestination.LOGO_BANNER, mStrings.cardLogoBanner, ManagementDestination.ADMIN_COMMON_APP_HUB) }
+                                )
+                            )
+                        )
+                    }
+
+                    ManagementDestination.ADMIN_TOOLS_HUB -> {
+                        AdminSectionHubScreen(
+                            hubTestTag = "admin_hub_management_tools",
+                            subtitle = "Access administrative governance, audit trail, backups, and media tools.",
+                            items = listOf(
+                                AdminHubRouteItem(
+                                    id = "approval_center",
+                                    title = mStrings.cardApprovalCenter,
+                                    description = "Review, approve, or reject pending content submissions.",
+                                    icon = Icons.Outlined.Approval,
+                                    isAllowed = canAccessDestination(ManagementDestination.APPROVAL_CENTER),
+                                    testTag = "admin_hub_open_approvals",
+                                    onClick = { navigateToDestination(ManagementDestination.APPROVAL_CENTER, mStrings.cardApprovalCenter, ManagementDestination.ADMIN_TOOLS_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "version_history",
+                                    title = mStrings.cardVersionHistory,
+                                    description = "Inspect content revisions and restore previous versions.",
+                                    icon = Icons.Outlined.History,
+                                    isAllowed = canAccessDestination(ManagementDestination.VERSION_HISTORY),
+                                    testTag = "admin_hub_open_version_history",
+                                    onClick = { navigateToDestination(ManagementDestination.VERSION_HISTORY, mStrings.cardVersionHistory, ManagementDestination.ADMIN_TOOLS_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "activity_log",
+                                    title = mStrings.cardActivityLog,
+                                    description = "Review administrative security and content audit logs.",
+                                    icon = Icons.AutoMirrored.Outlined.ReceiptLong,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.ACTIVITY_LOG, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_activity_log",
+                                    onClick = { navigateToDestination(ManagementDestination.ACTIVITY_LOG, mStrings.cardActivityLog, ManagementDestination.ADMIN_TOOLS_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "backup_restore",
+                                    title = mStrings.cardBackupRestore,
+                                    description = "Export or restore encrypted school administration backups.",
+                                    icon = Icons.Outlined.Backup,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.BACKUP_RESTORE, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_backup_restore",
+                                    onClick = { navigateToDestination(ManagementDestination.BACKUP_RESTORE, mStrings.cardBackupRestore, ManagementDestination.ADMIN_TOOLS_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "tools_media_studio",
+                                    title = mStrings.cardMediaStudio,
+                                    description = "Manage stored images and optimized media assets.",
+                                    icon = Icons.Outlined.PermMedia,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_tools_media",
+                                    onClick = { navigateToDestination(ManagementDestination.MEDIA_STUDIO, mStrings.cardMediaStudio, ManagementDestination.ADMIN_TOOLS_HUB) }
+                                )
+                            )
+                        )
+                    }
+
+                    ManagementDestination.ADMIN_UPDATES_HUB -> {
+                        AdminSectionHubScreen(
+                            hubTestTag = "admin_hub_updates",
+                            subtitle = "Manage official school news, announcements, and administrative notifications.",
+                            items = listOf(
+                                AdminHubRouteItem(
+                                    id = "news",
+                                    title = mStrings.cardNews,
+                                    description = "Create and publish official school news updates.",
+                                    icon = Icons.Outlined.Newspaper,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.NEWS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_news",
+                                    onClick = { navigateToDestination(ManagementDestination.NEWS, mStrings.cardNews, ManagementDestination.ADMIN_UPDATES_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "announcements",
+                                    title = mStrings.cardAnnouncements,
+                                    description = "Publish official notices and school-wide announcements.",
+                                    icon = Icons.Outlined.Campaign,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.ANNOUNCEMENTS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_announcements",
+                                    onClick = { navigateToDestination(ManagementDestination.ANNOUNCEMENTS, mStrings.cardAnnouncements, ManagementDestination.ADMIN_UPDATES_HUB) }
+                                ),
+                                AdminHubRouteItem(
+                                    id = "notifications",
+                                    title = mStrings.cardNotifications,
+                                    description = "View administrative alerts and local device alert settings.",
+                                    icon = Icons.Outlined.Notifications,
+                                    isAllowed = managementViewModel.hasPermission(ManagementSection.NOTIFICATIONS, PermissionAction.VIEW),
+                                    testTag = "admin_hub_open_notifications",
+                                    onClick = { navigateToDestination(ManagementDestination.NOTIFICATIONS, mStrings.cardNotifications, ManagementDestination.ADMIN_UPDATES_HUB) }
+                                )
+                            )
+                        )
+                    }
+
+                    ManagementDestination.SCHOOL_PROFILE,
+                    ManagementDestination.ABOUT_SCHOOL,
+                    ManagementDestination.CONTACT_DETAILS -> {
+                        val sec = when (currentDestination) {
+                            ManagementDestination.ABOUT_SCHOOL -> ManagementSection.ABOUT_SCHOOL
+                            ManagementDestination.CONTACT_DETAILS -> ManagementSection.CONTACT_DETAILS
+                            else -> ManagementSection.SCHOOL_PROFILE
+                        }
+                        SchoolProfileSectionEditor(
+                            managementViewModel = managementViewModel,
+                            mStrings = mStrings,
+                            section = sec,
+                            onNavigateBack = { navigateBackOneStep() },
+                            onRegisterNavigationGuard = { guard -> activeLeaveGuard = guard }
+                        )
+                    }
+                    ManagementDestination.LOGO_BANNER -> HeroBannerEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.ACADEMICS -> AcademicsEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.COURSES -> CoursesEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.FACILITIES -> FacilitiesEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.TRANSPORT -> TransportEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.NEWS -> NewsEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.ANNOUNCEMENTS -> AnnouncementsEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.PHOTO_GALLERY -> PhotoGalleryEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.SOCIAL_MEDIA -> SocialMediaEditorScreen(managementViewModel, mStrings)
+                    ManagementDestination.SCHOOL_POSTS -> SchoolFeedAdminScreen(managementViewModel, mStrings, initialTab = 0)
+                    ManagementDestination.SCHOOL_HIGHLIGHTS -> SchoolFeedAdminScreen(managementViewModel, mStrings, initialTab = 1)
+                    ManagementDestination.MEDIA_STUDIO -> MediaStudioScreen(managementViewModel, mStrings)
+                    ManagementDestination.STAFF_MANAGEMENT -> StaffManagementScreen(managementViewModel, mStrings)
+                    ManagementDestination.APPROVAL_CENTER -> ApprovalCenterScreen(managementViewModel, mStrings)
+                    ManagementDestination.VERSION_HISTORY -> VersionHistoryScreen(managementViewModel, mStrings)
+                    ManagementDestination.ACTIVITY_LOG -> ActivityLogScreen(managementViewModel, mStrings)
+                    ManagementDestination.NOTIFICATIONS -> NotificationsScreen(managementViewModel, mStrings)
+                    ManagementDestination.GLOBAL_SEARCH -> AdminDashboardSearchScreen(
+                        managementViewModel = managementViewModel,
+                        onOpenCard = { card -> navigateToAdminCard(card) },
+                        onOpenSection = { sec ->
+                            val target = when (sec) {
+                                ManagementSection.SCHOOL_PROFILE -> ManagementDestination.SCHOOL_PROFILE
+                                ManagementSection.ABOUT_SCHOOL -> ManagementDestination.ABOUT_SCHOOL
+                                ManagementSection.CONTACT_DETAILS -> ManagementDestination.CONTACT_DETAILS
+                                ManagementSection.LOGO_BANNER -> ManagementDestination.LOGO_BANNER
+                                ManagementSection.ACADEMICS -> ManagementDestination.ACADEMICS
+                                ManagementSection.HIGHER_SECONDARY_COURSES -> ManagementDestination.COURSES
+                                ManagementSection.FACILITIES -> ManagementDestination.FACILITIES
+                                ManagementSection.TRANSPORT -> ManagementDestination.TRANSPORT
+                                ManagementSection.NEWS -> ManagementDestination.NEWS
+                                ManagementSection.ANNOUNCEMENTS -> ManagementDestination.ANNOUNCEMENTS
+                                ManagementSection.PHOTO_GALLERY -> ManagementDestination.PHOTO_GALLERY
+                                ManagementSection.SOCIAL_MEDIA -> ManagementDestination.SOCIAL_MEDIA
+                                ManagementSection.SCHOOL_POSTS -> ManagementDestination.SCHOOL_POSTS
+                                ManagementSection.SCHOOL_HIGHLIGHTS -> ManagementDestination.SCHOOL_HIGHLIGHTS
+                                ManagementSection.MEDIA_STUDIO -> ManagementDestination.MEDIA_STUDIO
+                                ManagementSection.STAFF_MANAGEMENT -> ManagementDestination.STAFF_MANAGEMENT
+                                ManagementSection.ACTIVITY_LOG -> ManagementDestination.ACTIVITY_LOG
+                                ManagementSection.NOTIFICATIONS -> ManagementDestination.NOTIFICATIONS
+                                ManagementSection.BACKUP_RESTORE -> ManagementDestination.BACKUP_RESTORE
+                                ManagementSection.APP_SETTINGS -> ManagementDestination.APP_SETTINGS
+                            }
+                            navigateToDestination(target, mStrings.sectionLabel(sec))
+                        },
+                        onOpenToolKey = { key ->
+                            when (key) {
+                                "APPROVAL_CENTER" -> navigateToDestination(ManagementDestination.APPROVAL_CENTER, mStrings.cardApprovalCenter)
+                                "VERSION_HISTORY" -> navigateToDestination(ManagementDestination.VERSION_HISTORY, mStrings.cardVersionHistory)
+                            }
+                        }
+                    )
+                    ManagementDestination.BACKUP_RESTORE -> BackupRestoreScreen(managementViewModel, mStrings)
+                    ManagementDestination.APP_SETTINGS -> {
+                        SettingsScreen(
+                            currentLanguage = currentLanguage,
+                            currentThemeMode = currentThemeMode,
+                            onLanguageSelected = { mainViewModel.selectLanguage(it, markOnboarded = true) },
+                            onThemeModeSelected = { mainViewModel.selectThemeMode(it) },
+                            onOpenLanguageSelection = onOpenLanguageSelection
+                        )
+                    }
+                ManagementDestination.V2_HOME_HUB -> {
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = AdminV2Card.HOME_PAGE.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2HomePageHubScreen(
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onOpenHeroBanner = { currentDestination = ManagementDestination.LOGO_BANNER },
+                            onOpenSchoolPosts = { currentDestination = ManagementDestination.SCHOOL_POSTS },
+                            onOpenHighlights = { currentDestination = ManagementDestination.SCHOOL_HIGHLIGHTS },
+                            onOpenLivePreview = { onExitToPublicApp() }
+                        )
+                    }
+                }
+                ManagementDestination.V2_PARENT_HUB -> {
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = AdminV2Card.PARENT.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2ParentInfoHubScreen(
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onOpenAnnouncements = { currentDestination = ManagementDestination.ANNOUNCEMENTS },
+                            onOpenNewsCircularsV2 = {
+                                selectedV2CategoryRoute = AcademicsV2Category.NEWS_ANNOUNCEMENTS.routeId
+                                currentDestination = ManagementDestination.V2_ACADEMICS_CATEGORY
+                            },
+                            onOpenTransportV2 = {
+                                selectedV2CategoryRoute = AcademicsV2Category.TRANSPORT.routeId
+                                currentDestination = ManagementDestination.V2_ACADEMICS_CATEGORY
+                            },
+                            onOpenCalendarV2 = {
+                                selectedV2CategoryRoute = AcademicsV2Category.ACADEMIC_CALENDAR.routeId
+                                currentDestination = ManagementDestination.V2_ACADEMICS_CATEGORY
+                            }
+                        )
+                    }
+                }
+                ManagementDestination.V2_ACADEMICS_HUB -> {
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = "Academics Management",
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2AcademicsManagementHubScreen(
+                            session = session,
+                            managementViewModel = managementViewModel,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onSelectCategory = { cat ->
+                                selectedV2CategoryRoute = cat.routeId
+                                currentDestination = ManagementDestination.V2_ACADEMICS_CATEGORY
+                            }
+                        )
+                    }
+                }
+                ManagementDestination.V2_ACADEMICS_CATEGORY -> {
+                    val category = AcademicsV2Category.fromRouteId(selectedV2CategoryRoute)
+                        ?: AcademicsV2Category.ACADEMICS
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = category.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2CategoryManagementScreen(
+                            category = category,
+                            session = session,
+                            managementViewModel = managementViewModel,
+                            onBack = { currentDestination = ManagementDestination.V2_ACADEMICS_HUB }
+                        )
+                    }
+                }
+                ManagementDestination.V2_ADMIN_HUB -> {
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = AdminV2Card.ADMIN.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2AdminTeamHubScreen(
+                            session = session,
+                            managementViewModel = managementViewModel,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onOpenLegacyStaffEditor = { currentDestination = ManagementDestination.STAFF_MANAGEMENT }
+                        )
+                    }
+                }
+                ManagementDestination.V2_SCHOOL_SETTINGS_HUB -> {
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = AdminV2Card.SCHOOL_SETTINGS.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2SchoolSettingsHubScreen(
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onOpenSchoolProfile = { currentDestination = ManagementDestination.SCHOOL_PROFILE },
+                            onOpenLogoBanner = { currentDestination = ManagementDestination.LOGO_BANNER },
+                            onOpenSocialMedia = { currentDestination = ManagementDestination.SOCIAL_MEDIA },
+                            onOpenAppSettings = { currentDestination = ManagementDestination.APP_SETTINGS }
+                        )
+                    }
+                }
+                ManagementDestination.V2_PREVIEW_PUBLISH -> {
+                    if (!isVersion2AdminEnabled || schoolDataViewModel == null) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = AdminV2Card.PREVIEW_PUBLISH.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        AdminV2PreviewAndPublishScreen(
+                            session = session,
+                            managementViewModel = managementViewModel,
+                            schoolDataViewModel = schoolDataViewModel,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onOpenFullHomePreview = { onExitToPublicApp() },
+                            onOpenAcademicsCategory = { cat ->
+                                selectedV2CategoryRoute = cat.routeId
+                                currentDestination = ManagementDestination.V2_ACADEMICS_CATEGORY
+                            }
+                        )
+                    }
+                }
+                ManagementDestination.V2_OWNER_CONTROL_CENTER -> {
+                    if (!isVersion2AdminEnabled) {
+                        Version2UnavailableNoticeScreen(
+                            language = currentLanguage,
+                            title = AdminV2Card.SCHOOL_OWNER_CONTROL_CENTER.title,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD }
+                        )
+                    } else {
+                        SchoolOwnerControlCenterScreen(
+                            session = session,
+                            managementViewModel = managementViewModel,
+                            onBack = { currentDestination = ManagementDestination.DASHBOARD },
+                            onOpenStaffAccounts = { currentDestination = ManagementDestination.STAFF_MANAGEMENT },
+                            onOpenLegacyApprovals = { currentDestination = ManagementDestination.APPROVAL_CENTER },
+                            onOpenBackupRestore = { currentDestination = ManagementDestination.BACKUP_RESTORE }
+                        )
+                    }
+                }
+                    else -> {
+                        val parentModule = currentDestination.toParentPortalAdminModule()
+                        if (parentModule != null) {
+                            ParentPortalAdminModuleScreen(
+                                module = parentModule,
+                                currentLanguage = currentLanguage,
+                                onBackToDashboard = {
+                                    navigateBackOneStep()
                                 }
                             )
                         }
-
-                        if (parentPortalMgmtExpanded) {
-                            itemsIndexed(
-                                items = ParentPortalAdminModule.entries,
-                                key = { _, module -> "ppm_${module.key}" }
-                            ) { index, module ->
-                                ParentPortalSubmenuCard(
-                                    module = module,
-                                    indexNumber = index + 1,
-                                    title = parentAdminStrings.modules.getValue(module).title,
-                                    onClick = {
-                                        managementViewModel.onUserInteraction()
-                                        managementViewModel.clearFeedback()
-                                        currentDestination = module.toManagementDestination()
-                                    }
-                                )
-                            }
-
-                            item(
-                                key = "parent_portal_mgmt_divider",
-                                span = { GridItemSpan(maxLineSpan) }
-                            ) {
-                                HorizontalDivider(
-                                    color = brand.royalGold.copy(alpha = 0.4f),
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        items(visibleCards, key = { it.destination.name }) { card ->
-                            Card(
-                                onClick = {
-                                    managementViewModel.onUserInteraction()
-                                    managementViewModel.clearFeedback()
-                                    currentDestination = card.destination
-                                },
-                                shape = MaterialTheme.shapes.medium,
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                modifier = Modifier.testTag(card.testTag)
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Surface(
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = card.accentColor.copy(alpha = 0.14f),
-                                            modifier = Modifier.size(38.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Icon(
-                                                    imageVector = card.icon,
-                                                    contentDescription = card.title,
-                                                    tint = card.accentColor,
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
-                                        }
-                                        Surface(
-                                            color = brand.royalGold.copy(alpha = 0.22f),
-                                            shape = RoundedCornerShape(50)
-                                        ) {
-                                            Text(
-                                                text = card.countText,
-                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = card.title,
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        maxLines = 2,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                ManagementDestination.SCHOOL_PROFILE,
-                ManagementDestination.ABOUT_SCHOOL,
-                ManagementDestination.CONTACT_DETAILS -> {
-                    val sec = when (currentDestination) {
-                        ManagementDestination.ABOUT_SCHOOL -> ManagementSection.ABOUT_SCHOOL
-                        ManagementDestination.CONTACT_DETAILS -> ManagementSection.CONTACT_DETAILS
-                        else -> ManagementSection.SCHOOL_PROFILE
-                    }
-                    SchoolProfileSectionEditor(
-                        managementViewModel = managementViewModel,
-                        mStrings = mStrings,
-                        section = sec,
-                        onNavigateBack = {
-                            managementViewModel.clearFeedback()
-                            currentDestination = ManagementDestination.DASHBOARD
-                        },
-                        onRegisterNavigationGuard = { guard -> activeLeaveGuard = guard }
-                    )
-                }
-                ManagementDestination.LOGO_BANNER -> HeroBannerEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.ACADEMICS -> AcademicsEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.COURSES -> CoursesEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.FACILITIES -> FacilitiesEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.TRANSPORT -> TransportEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.NEWS -> NewsEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.ANNOUNCEMENTS -> AnnouncementsEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.PHOTO_GALLERY -> PhotoGalleryEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.SOCIAL_MEDIA -> SocialMediaEditorScreen(managementViewModel, mStrings)
-                ManagementDestination.MEDIA_STUDIO -> MediaStudioScreen(managementViewModel, mStrings)
-                ManagementDestination.STAFF_MANAGEMENT -> StaffManagementScreen(managementViewModel, mStrings)
-                ManagementDestination.APPROVAL_CENTER -> ApprovalCenterScreen(managementViewModel, mStrings)
-                ManagementDestination.VERSION_HISTORY -> VersionHistoryScreen(managementViewModel, mStrings)
-                ManagementDestination.ACTIVITY_LOG -> ActivityLogScreen(managementViewModel, mStrings)
-                ManagementDestination.NOTIFICATIONS -> NotificationsScreen(managementViewModel, mStrings)
-                ManagementDestination.GLOBAL_SEARCH -> GlobalSearchScreen(managementViewModel, mStrings) { sec ->
-                    currentDestination = when (sec) {
-                        ManagementSection.SCHOOL_PROFILE -> ManagementDestination.SCHOOL_PROFILE
-                        ManagementSection.ABOUT_SCHOOL -> ManagementDestination.ABOUT_SCHOOL
-                        ManagementSection.CONTACT_DETAILS -> ManagementDestination.CONTACT_DETAILS
-                        ManagementSection.LOGO_BANNER -> ManagementDestination.LOGO_BANNER
-                        ManagementSection.ACADEMICS -> ManagementDestination.ACADEMICS
-                        ManagementSection.HIGHER_SECONDARY_COURSES -> ManagementDestination.COURSES
-                        ManagementSection.FACILITIES -> ManagementDestination.FACILITIES
-                        ManagementSection.TRANSPORT -> ManagementDestination.TRANSPORT
-                        ManagementSection.NEWS -> ManagementDestination.NEWS
-                        ManagementSection.ANNOUNCEMENTS -> ManagementDestination.ANNOUNCEMENTS
-                        ManagementSection.PHOTO_GALLERY -> ManagementDestination.PHOTO_GALLERY
-                        ManagementSection.SOCIAL_MEDIA -> ManagementDestination.SOCIAL_MEDIA
-                        ManagementSection.MEDIA_STUDIO -> ManagementDestination.MEDIA_STUDIO
-                        ManagementSection.STAFF_MANAGEMENT -> ManagementDestination.STAFF_MANAGEMENT
-                        else -> ManagementDestination.DASHBOARD
-                    }
-                }
-                ManagementDestination.BACKUP_RESTORE -> BackupRestoreScreen(managementViewModel, mStrings)
-                ManagementDestination.APP_SETTINGS -> {
-                    SettingsScreen(
-                        currentLanguage = currentLanguage,
-                        currentThemeMode = currentThemeMode,
-                        onLanguageSelected = { mainViewModel.selectLanguage(it, markOnboarded = true) },
-                        onThemeModeSelected = { mainViewModel.selectThemeMode(it) }
-                    )
-                }
-                else -> {
-                    val parentModule = currentDestination.toParentPortalAdminModule()
-                    if (parentModule != null) {
-                        ParentPortalAdminModuleScreen(
-                            module = parentModule,
-                            currentLanguage = currentLanguage,
-                            onBackToDashboard = {
-                                managementViewModel.onUserInteraction()
-                                managementViewModel.clearFeedback()
-                                currentDestination = ManagementDestination.DASHBOARD
-                            }
-                        )
                     }
                 }
             }

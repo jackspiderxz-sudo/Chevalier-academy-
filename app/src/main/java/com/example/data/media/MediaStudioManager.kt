@@ -433,22 +433,8 @@ class MediaStudioManager(private val context: Context) {
             return (((currentDegrees + delta) % 360) + 360) % 360
         }
 
-        fun isValidYouTubeUrl(url: String): Boolean {
-            val trimmed = url.trim()
-            if (trimmed.isBlank()) return false
-            return try {
-                val uri = Uri.parse(trimmed)
-                val scheme = uri.scheme?.lowercase()
-                val host = uri.host?.lowercase() ?: return false
-                (scheme == "https" || scheme == "http") &&
-                    (host == "youtube.com" ||
-                        host == "www.youtube.com" ||
-                        host == "m.youtube.com" ||
-                        host == "youtu.be")
-            } catch (_: Throwable) {
-                false
-            }
-        }
+        fun isValidYouTubeUrl(url: String): Boolean =
+            YouTubeMediaHelper.isValidYouTubeUrl(url)
 
         private fun guessMimeFromPath(path: String): String {
             val lower = path.lowercase()

@@ -9,6 +9,7 @@
 import { ChevalierStore } from './store.js';
 import { getStrings, getAdminPpmStrings, PARENT_MODULES, ADMIN_PPM_MODULES } from './i18n.js';
 import { icon } from './icons.js';
+import { compressImageFileForStorage } from './mediaUtils.js';
 import {
   esc,
   safeExternalUrl,
@@ -16,6 +17,7 @@ import {
   renderHomeView,
   renderParentDashboardView,
   renderParentModuleDetailView,
+  renderAcademicsHubView,
   renderAcademicsView,
   renderCoursesView,
   renderAboutView,
@@ -79,7 +81,7 @@ function applyTheme(themePref) {
 function getPrimaryTabForRoute(route) {
   if (route === 'home') return 'home';
   if (route === 'parent' || route.startsWith('parent/')) return 'parent';
-  if (route === 'academics' || route === 'courses') return 'academics';
+  if (route === 'academics' || route === 'academics/overview' || route === 'courses') return 'academics';
   if (route === 'contact' || route === 'social') return 'contact';
   return '';
 }
@@ -92,7 +94,7 @@ function getScreenTitle(route, state, s) {
     const mod = PARENT_MODULES.find((m) => m.key === key);
     return mod ? s[mod.titleKey] : s.titleParent;
   }
-  if (route === 'academics') return s.titleAcademics;
+  if (route === 'academics' || route === 'academics/overview') return s.titleAcademics;
   if (route === 'courses') return s.titleHigherSecondaryCourses;
   if (route === 'about') return s.titleAboutSchool;
   if (route === 'facilities') return s.titleFacilities;
@@ -300,7 +302,8 @@ function renderRouteBody(route, state, s) {
   if (route.startsWith('parent/module/')) {
     return renderParentModuleDetailView(state, s, route.slice('parent/module/'.length));
   }
-  if (route === 'academics') return renderAcademicsView(state, s);
+  if (route === 'academics') return renderAcademicsHubView(state, s);
+  if (route === 'academics/overview') return renderAcademicsView(state, s);
   if (route === 'courses') return renderCoursesView(state, s);
   if (route === 'about') return renderAboutView(state, s);
   if (route === 'facilities') return renderFacilitiesView(state, s);
@@ -458,15 +461,6 @@ function render() {
       searchEl.setSelectionRange(searchEl.value.length, searchEl.value.length);
     }
   }
-}
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
-  });
 }
 
 /* ==========================================================================
@@ -700,7 +694,10 @@ document.addEventListener('submit', async (event) => {
   } else if (form.id === 'cms-hero-form') {
     const file = fd.get('imageFile');
     let imageUrl = String(fd.get('imageUrl') || '').trim();
-    if (!imageUrl && file && file.size > 0) imageUrl = await readFileAsDataUrl(file);
+    if (!imageUrl && file && file.size > 0) {
+      const processed = await compressImageFileForStorage(file);
+      imageUrl = processed.dataUrl;
+    }
     if (imageUrl) {
       store.addHeroPhoto({ imageUrl, caption: String(fd.get('caption') || '').trim() });
       form.reset();
@@ -708,7 +705,10 @@ document.addEventListener('submit', async (event) => {
   } else if (form.id === 'cms-gallery-form') {
     const file = fd.get('imageFile');
     let imageUrl = String(fd.get('imageUrl') || '').trim();
-    if (!imageUrl && file && file.size > 0) imageUrl = await readFileAsDataUrl(file);
+    if (!imageUrl && file && file.size > 0) {
+      const processed = await compressImageFileForStorage(file);
+      imageUrl = processed.dataUrl;
+    }
     if (imageUrl) {
       store.addGalleryMedia({
         imageUrl,
@@ -780,3 +780,4 @@ store.subscribe(() => render());
 // Boot
 ui.route = parseHashRoute();
 render();
+store.enableCloudSync().catch(() => {});

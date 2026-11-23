@@ -1,6 +1,8 @@
 package com.example.ui.screens.management
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.example.ui.components.ApplySecureDialogWindow
+import com.example.ui.components.SecureDialogProperties
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -101,18 +103,31 @@ fun MediaStudioScreen(managementViewModel: ManagementViewModel, mStrings: Manage
     val mediaManager = remember { (context.applicationContext as ChevalierApplication).container.mediaStudioManager }
     val scope = rememberCoroutineScope()
 
-    val (canCreate, canEdit, canDelete, canCreateHeroBanner, canPublishHeroBanner) = remember(authUiState) {
-        listOf(
-            managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.CREATE),
-            managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.EDIT),
-            managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.DELETE),
-            managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.CREATE),
-            managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.PUBLISH)
-        )
+    val canCreate = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.CREATE)
+    }
+    val canEdit = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.EDIT)
+    }
+    val canDelete = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.MEDIA_STUDIO, PermissionAction.DELETE)
+    }
+    val canCreateHeroBanner = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.CREATE)
+    }
+    val canPublishHeroBanner = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.LOGO_BANNER, PermissionAction.PUBLISH)
+    }
+    val canCreateGallery = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.PHOTO_GALLERY, PermissionAction.CREATE)
+    }
+    val canPublishGallery = remember(authUiState) {
+        managementViewModel.hasPermission(ManagementSection.PHOTO_GALLERY, PermissionAction.PUBLISH)
     }
 
     var showYouTubeDialog by remember { mutableStateOf(false) }
     var replaceTargetId by remember { mutableStateOf<Long?>(null) }
+    var editMetadataTarget by remember { mutableStateOf<MediaStudioItemEntity?>(null) }
     var assignAlbumTarget by remember { mutableStateOf<MediaStudioItemEntity?>(null) }
     var assignHeroAdjustTarget by remember { mutableStateOf<MediaStudioItemEntity?>(null) }
     var deleteCandidate by remember { mutableStateOf<Pair<MediaStudioItemEntity, List<String>>?>(null) }
@@ -145,11 +160,15 @@ fun MediaStudioScreen(managementViewModel: ManagementViewModel, mStrings: Manage
         var localError by remember { mutableStateOf<String?>(null) }
         val activeError = localError ?: vmError
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 showYouTubeDialog = false
             },
-            title = { Text(mStrings.mediaYouTubeDialogTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.mediaYouTubeDialogTitle)
+            },
             text = {
                 Column(
                     modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -214,44 +233,164 @@ fun MediaStudioScreen(managementViewModel: ManagementViewModel, mStrings: Manage
         )
     }
 
-    assignAlbumTarget?.let { item ->
+    editMetadataTarget?.let { target ->
+        var title by remember(target.id, target.title) { mutableStateOf(target.title) }
+        var caption by remember(target.id, target.caption) { mutableStateOf(target.caption.orEmpty()) }
+        var category by remember(target.id, target.categoryOrAlbum) { mutableStateOf(target.categoryOrAlbum) }
+        var localError by remember(target.id) { mutableStateOf<String?>(null) }
+        val activeError = localError ?: vmError
+
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
-                assignAlbumTarget = null
+                editMetadataTarget = null
             },
-            title = { Text(mStrings.mediaAssignAlbumTitle(item.title)) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.mediaEditMetadataDialogTitle)
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    vmError?.let {
-                        ErrorBanner(it, dismissLabel = mStrings.dismissBtn) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    activeError?.let { err ->
+                        ErrorBanner(err, dismissLabel = mStrings.dismissBtn) {
+                            localError = null
                             managementViewModel.clearFeedback()
                         }
                     }
-                    if (albums.isEmpty()) {
-                        Text(mStrings.mediaCreateAlbumFirstNotice)
-                    } else {
-                        albums.forEach { a ->
-                            OutlinedButton(
-                                onClick = {
-                                    managementViewModel.assignMediaToAlbum(item.id, a.album.id, true)
-                                    assignAlbumTarget = null
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("${a.album.title} (${a.album.category})")
-                            }
-                        }
-                    }
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = {
+                            title = it
+                            localError = null
+                        },
+                        label = { Text(mStrings.mediaTitleLabel) },
+                        singleLine = true,
+                        isError = activeError != null && title.isBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("media_edit_title_input")
+                    )
+                    OutlinedTextField(
+                        value = caption,
+                        onValueChange = { caption = it },
+                        label = { Text(mStrings.mediaCaptionLabel) },
+                        minLines = 2,
+                        maxLines = 4,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("media_edit_caption_input")
+                    )
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = {
+                            category = it
+                            localError = null
+                        },
+                        label = { Text(mStrings.mediaCategoryLabel) },
+                        singleLine = true,
+                        isError = activeError != null && category.isBlank(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("media_edit_category_input")
+                    )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                Button(
+                    onClick = {
+                        val cleanTitle = title.trim()
+                        val cleanCategory = category.trim()
+                        when {
+                            cleanTitle.isEmpty() -> {
+                                localError = mStrings.mediaTitleRequiredError
+                            }
+                            cleanCategory.isEmpty() -> {
+                                localError = mStrings.mediaCategoryRequiredError
+                            }
+                            else -> {
+                                localError = null
+                                managementViewModel.updateMediaMetadata(
+                                    mediaId = target.id,
+                                    title = cleanTitle,
+                                    caption = caption.trim().takeIf { it.isNotEmpty() },
+                                    categoryOrAlbum = cleanCategory
+                                ) {
+                                    editMetadataTarget = null
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.testTag("media_edit_metadata_save_btn")
+                ) { Text(mStrings.saveChangesBtn) }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        managementViewModel.clearFeedback()
+                        editMetadataTarget = null
+                    },
+                    modifier = Modifier.testTag("media_edit_metadata_cancel_btn")
+                ) { Text(mStrings.cancelBtn) }
+            },
+            modifier = Modifier.testTag("media_edit_metadata_dialog")
+        )
+    }
+
+    if (canCreateGallery) {
+        assignAlbumTarget?.let { item ->
+            AlertDialog(
+                properties = SecureDialogProperties,
+                onDismissRequest = {
                     managementViewModel.clearFeedback()
                     assignAlbumTarget = null
-                }) { Text(mStrings.closeBtn) }
-            }
-        )
+                },
+                title = {
+                    ApplySecureDialogWindow()
+                    Text(mStrings.mediaAssignAlbumTitle(item.title))
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        vmError?.let {
+                            ErrorBanner(it, dismissLabel = mStrings.dismissBtn) {
+                                managementViewModel.clearFeedback()
+                            }
+                        }
+                        if (albums.isEmpty()) {
+                            Text(mStrings.mediaCreateAlbumFirstNotice)
+                        } else {
+                            albums.forEach { a ->
+                                OutlinedButton(
+                                    onClick = {
+                                        managementViewModel.assignMediaToAlbum(
+                                            mediaId = item.id,
+                                            albumId = a.album.id,
+                                            publishNow = canPublishGallery
+                                        )
+                                        assignAlbumTarget = null
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("media_assign_album_option_${a.album.id}")
+                                ) {
+                                    Text("${a.album.title} (${a.album.category})")
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        managementViewModel.clearFeedback()
+                        assignAlbumTarget = null
+                    }) { Text(mStrings.closeBtn) }
+                },
+                modifier = Modifier.testTag("media_assign_album_dialog")
+            )
+        }
     }
 
     assignHeroAdjustTarget?.let { item ->
@@ -274,11 +413,15 @@ fun MediaStudioScreen(managementViewModel: ManagementViewModel, mStrings: Manage
 
     deleteCandidate?.let { (item, warnings) ->
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 deleteCandidate = null
             },
-            title = { Text(mStrings.mediaDeleteTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.mediaDeleteTitle)
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     vmError?.let {
@@ -367,7 +510,34 @@ fun MediaStudioScreen(managementViewModel: ManagementViewModel, mStrings: Manage
                             } else if (!readable) {
                                 ErrorBanner(mStrings.mediaMissingFile(item.originalUri))
                             }
-                            Text(item.title, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.testTag("media_item_title_${item.id}")
+                            )
+                            if (item.categoryOrAlbum.isNotBlank()) {
+                                Surface(
+                                    color = brand.royalGold.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(6.dp)
+                                ) {
+                                    Text(
+                                        text = item.categoryOrAlbum,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                            .testTag("media_item_category_${item.id}")
+                                    )
+                                }
+                            }
+                            item.caption?.takeIf { it.isNotBlank() }?.let { itemCaption ->
+                                Text(
+                                    text = itemCaption,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.testTag("media_item_caption_${item.id}")
+                                )
+                            }
                             Text(
                                 text = if (item.mediaKind == "IMAGE") {
                                     mStrings.mediaSizeStats(
@@ -393,10 +563,26 @@ fun MediaStudioScreen(managementViewModel: ManagementViewModel, mStrings: Manage
                                         Text(mStrings.mediaAssignBannerBtn)
                                     }
                                 }
-                                OutlinedButton(onClick = { assignAlbumTarget = item }) {
-                                    Text(mStrings.mediaAssignAlbumBtn)
+                                if (canCreateGallery) {
+                                    OutlinedButton(
+                                        onClick = { assignAlbumTarget = item },
+                                        modifier = Modifier.testTag("media_assign_album_btn_${item.id}")
+                                    ) {
+                                        Text(mStrings.mediaAssignAlbumBtn)
+                                    }
                                 }
                                 if (canEdit && item.mediaKind == "IMAGE") {
+                                    OutlinedButton(
+                                        onClick = {
+                                            managementViewModel.clearFeedback()
+                                            editMetadataTarget = item
+                                        },
+                                        modifier = Modifier.testTag("media_edit_metadata_btn_${item.id}")
+                                    ) {
+                                        Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.size(4.dp))
+                                        Text(mStrings.mediaEditMetadataBtn)
+                                    }
                                     OutlinedButton(onClick = {
                                         replaceTargetId = item.id
                                         replacePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -435,11 +621,15 @@ fun StaffManagementScreen(managementViewModel: ManagementViewModel, mStrings: Ma
     deleteCandidate?.let { candidate ->
         val acc = candidate.account
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 deleteCandidate = null
             },
-            title = { Text(mStrings.deleteStaffTitle) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.deleteStaffTitle)
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     vmError?.let {
@@ -514,12 +704,14 @@ fun StaffManagementScreen(managementViewModel: ManagementViewModel, mStrings: Ma
         val activeError = localError ?: vmError
 
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 showCreateDialog = false
                 editingTarget = null
             },
             title = {
+                ApplySecureDialogWindow()
                 Text(
                     if (isCreate) mStrings.staffCreateDialogTitle
                     else mStrings.staffEditDialogTitle(target?.account?.displayName.orEmpty())
@@ -781,11 +973,15 @@ fun ApprovalCenterScreen(managementViewModel: ManagementViewModel, mStrings: Man
         var rejectError by remember(target) { mutableStateOf<String?>(null) }
         val activeError = rejectError ?: vmError
         AlertDialog(
+            properties = SecureDialogProperties,
             onDismissRequest = {
                 managementViewModel.clearFeedback()
                 rejectingTarget = null
             },
-            title = { Text(mStrings.approvalRejectDialogTitle(target.recordTitle)) },
+            title = {
+                ApplySecureDialogWindow()
+                Text(mStrings.approvalRejectDialogTitle(target.recordTitle))
+            },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     activeError?.let { err ->
