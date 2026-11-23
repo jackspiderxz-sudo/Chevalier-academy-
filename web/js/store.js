@@ -483,54 +483,100 @@ export class ChevalierStore {
     const fetchFn = this._getFetch();
     if (!fetchFn) return null;
     const { tenantId, apiKey } = this.cloudConfig;
-    const runQueryUrl = `${this._getBaseDocumentsUrl()}/schools/${tenantId}:runQuery${apiKey ? `?key=${encodeURIComponent(apiKey)}` : ''}`;
+    const listUrl = `${this._getBaseDocumentsUrl()}/schools/${tenantId}/${collectionId}?pageSize=200${apiKey ? `&key=${encodeURIComponent(apiKey)}` : ''}`;
 
-    const structuredFilters = filters.map(([fieldPath, op, value]) => {
-      if (value === null || op === 'IS_NULL') {
-        return {
-          unaryFilter: {
-            field: { fieldPath },
-            op: 'IS_NULL'
-          }
-        };
+    const optionalApprovalDefaults = {
+      isVerified: true,
+      isPublished: true,
+      isApproved: true,
+      approvalStatus: 'APPROVED',
+      status: 'PUBLISHED'
+    };
+
+    const applyClientFilters = (docs) => {
+      if (!Array.isArray(filters) || filters.length === 0) {
+        return docs;
       }
-      return {
-        fieldFilter: {
-          field: { fieldPath },
-          op,
-          value: toFirestoreValue(value)
-        }
-      };
-    });
-
-    const whereClause =
-      structuredFilters.length === 1
-        ? structuredFilters[0]
-        : {
-            compositeFilter: {
-              op: 'AND',
-              filters: structuredFilters
-            }
-          };
+      return docs.filter((doc) => {
+        const data = doc.data || {};
+        return filters.every(([fieldPath, op, expected]) => {
+          let actual = data[fieldPath];
+          if (actual === undefined && fieldPath in optionalApprovalDefaults) {
+            actual = optionalApprovalDefaults[fieldPath];
+          }
+          if (op === 'IS_NULL' || expected === null) {
+            return actual === null || actual === undefined;
+          }
+          if (op === 'EQUAL') {
+            return actual === expected;
+          }
+          return true;
+        });
+      });
+    };
 
     try {
-      const res = await fetchFn(runQueryUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          structuredQuery: {
-            from: [{ collectionId }],
-            where: whereClause
-          }
-        })
+      const res = await fetchFn(listUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' }
       });
-      if (!res.ok) return null;
-      const rows = await res.json();
-      if (!Array.isArray(rows)) return [];
-      return rows
-        .filter((r) => r && r.document)
-        .map((r) => fromFirestoreDocument(r.document))
-        .filter(Boolean);
+      if (res && res.ok) {
+        const payload = await res.json();
+        const rawDocs = Array.isArray(payload?.documents) ? payload.documents : [];
+        const parsedDocs = rawDocs.map((d) => fromFirestoreDocument(d)).filter(Boolean);
+        return applyClientFilters(parsedDocs);
+      }
+
+      // Fallback to :runQuery when live Firestore Security Rules require explicit query predicates on public reads
+      if (Array.isArray(filters) && filters.length > 0) {
+        const runQueryUrl = `${this._getBaseDocumentsUrl()}/schools/${tenantId}:runQuery${apiKey ? `?key=${encodeURIComponent(apiKey)}` : ''}`;
+        const structuredFilters = filters.map(([fieldPath, op, value]) => {
+          if (value === null || op === 'IS_NULL') {
+            return {
+              unaryFilter: {
+                field: { fieldPath },
+                op: 'IS_NULL'
+              }
+            };
+          }
+          return {
+            fieldFilter: {
+              field: { fieldPath },
+              op,
+              value: toFirestoreValue(value)
+            }
+          };
+        });
+        const whereClause =
+          structuredFilters.length === 1
+            ? structuredFilters[0]
+            : {
+                compositeFilter: {
+                  op: 'AND',
+                  filters: structuredFilters
+                }
+              };
+        const qRes = await fetchFn(runQueryUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId }],
+              where: whereClause
+            }
+          })
+        });
+        if (qRes && qRes.ok) {
+          const rows = await qRes.json();
+          if (!Array.isArray(rows)) return [];
+          const parsedDocs = rows
+            .filter((r) => r && r.document)
+            .map((r) => fromFirestoreDocument(r.document))
+            .filter(Boolean);
+          return applyClientFilters(parsedDocs);
+        }
+      }
+      return null;
     } catch {
       return null;
     }

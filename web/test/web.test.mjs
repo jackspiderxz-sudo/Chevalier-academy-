@@ -335,32 +335,27 @@ test('Two-Way Live Sync (Android App <-> Firebase Firestore <-> Website) synchro
     }
 
     if (method === 'GET') {
-      const match = u.pathname.match(/\/schools\/chevalier_academy_dindigul\/([^/]+)\/([^/]+)$/);
-      if (match) {
-        const [, collection, remoteId] = match;
+      const docMatch = u.pathname.match(/\/schools\/chevalier_academy_dindigul\/([^/]+)\/([^/]+)$/);
+      if (docMatch) {
+        const [, collection, remoteId] = docMatch;
         const docObj = cloudDb.get(`${collection}/${remoteId}`);
         if (docObj) return { ok: true, status: 200, json: async () => docObj };
+        return { ok: false, status: 404, json: async () => ({}) };
       }
-      return { ok: false, status: 404, json: async () => ({}) };
-    }
 
-    if (method === 'POST' && u.pathname.endsWith(':runQuery')) {
-      const body = JSON.parse(options.body);
-      const collectionId = body.structuredQuery.from[0].collectionId;
-      if (collectionId !== 'school_profile') {
-        const filters = body.structuredQuery.where?.compositeFilter?.filters || [];
-        const hasUnaryNullFilter = filters.some(
-          (f) => f.unaryFilter?.field?.fieldPath === 'deletedAtMillis' && f.unaryFilter?.op === 'IS_NULL'
-        );
-        assert.ok(hasUnaryNullFilter, `Expected unaryFilter IS_NULL on deletedAtMillis for ${collectionId}`);
-      }
-      const results = [];
-      for (const [key, docObj] of cloudDb.entries()) {
-        if (key.startsWith(`${collectionId}/`)) {
-          results.push({ document: docObj });
+      const listMatch = u.pathname.match(/\/schools\/chevalier_academy_dindigul\/([^/]+)$/);
+      if (listMatch) {
+        const [, collectionId] = listMatch;
+        const documents = [];
+        for (const [key, docObj] of cloudDb.entries()) {
+          if (key.startsWith(`${collectionId}/`)) {
+            documents.push(docObj);
+          }
         }
+        return { ok: true, status: 200, json: async () => ({ documents }) };
       }
-      return { ok: true, status: 200, json: async () => results };
+
+      return { ok: false, status: 404, json: async () => ({}) };
     }
 
     return { ok: false, status: 404, json: async () => ({}) };
