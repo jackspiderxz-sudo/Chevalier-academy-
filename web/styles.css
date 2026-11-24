@@ -1471,3 +1471,462 @@ select:focus-visible {
   white-space: nowrap;
   border: 0;
 }
+
+/* ==========================================================================
+   24-Hour School Highlights (Vertical 9:16 YouTube Shorts Strip & Modal Grid)
+   ========================================================================== */
+.highlights-strip {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scroll-snap-type: x mandatory;
+}
+.highlights-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 12px;
+}
+.highlight-short-card {
+  position: relative;
+  width: 128px;
+  min-width: 128px;
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1.5px solid rgba(234, 191, 22, 0.72);
+  background: linear-gradient(150deg, #8D2029 0%, #3E090E 100%);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  scroll-snap-align: start;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.highlight-short-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.highlight-short-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.highlight-short-overlay {
+  position: absolute;
+  inset: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.12) 45%, rgba(0, 0, 0, 0.84) 100%);
+  color: #FFF9E8;
+}
+.highlight-play-pill {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(141, 32, 41, 0.9);
+  border: 1.5px solid #EABF16;
+  color: #FFF9E8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.highlight-short-title {
+  width: 100%;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+  color: #FFFFFF;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.highlight-more-card {
+  background: linear-gradient(145deg, #8D2029 0%, #631118 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.highlight-more-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  text-align: center;
+}
+
+/* ==========================================================================
+   School Social Feed Post Cards, YouTube 16:9 / 9:16 Embeds & Likes/Bookmarks
+   ========================================================================== */
+.social-post-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.social-post-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.social-post-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #fff;
+  padding: 2px;
+  border: 1.5px solid var(--brand-gold);
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.social-post-title {
+  margin: 0 0 4px;
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+  color: var(--text-primary);
+}
+.social-post-desc {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  white-space: pre-line;
+}
+.post-video-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: #140F0F;
+  padding: 0;
+  cursor: pointer;
+}
+.post-video-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-video-play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.28);
+  transition: background-color 0.16s ease;
+}
+.post-video-preview:hover .post-video-play-overlay {
+  background: rgba(0, 0, 0, 0.42);
+}
+.post-video-play-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(141, 32, 41, 0.92);
+  border: 2px solid #EABF16;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md);
+}
+.post-video-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-subtle);
+}
+.youtube-short-stage {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-subtle);
+}
+.youtube-embed-iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.post-single-photo-btn {
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-surface-variant);
+  cursor: pointer;
+}
+.post-single-photo-img {
+  width: 100%;
+  max-height: 380px;
+  object-fit: cover;
+}
+.post-multi-photo-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.post-multi-photo-item {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-variant);
+  padding: 0;
+  cursor: pointer;
+}
+.post-multi-photo-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.post-photo-count-badge {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(0, 0, 0, 0.68);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.social-post-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+.social-action-btn {
+  min-height: 44px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.84rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.social-action-btn:hover {
+  background: var(--bg-surface-hover);
+}
+.social-action-btn.liked {
+  border-color: #8D2029;
+  background: rgba(141, 32, 41, 0.12);
+  color: var(--brand-burgundy);
+}
+.social-action-btn.bookmarked {
+  border-color: var(--brand-forest);
+  background: var(--brand-forest-soft);
+  color: var(--brand-forest-on-container);
+}
+
+/* ==========================================================================
+   Academy 3x4 Category Grid & Vertical Expandable Sub-Section Accordions
+   ========================================================================== */
+.academy-grid-12 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 900px) {
+  .academy-grid-12 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.academy-grid-card {
+  min-height: 112px;
+  padding: 12px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.academy-grid-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-gold);
+  box-shadow: var(--shadow-md);
+}
+.academy-grid-card-title {
+  font-size: 0.82rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+.academy-accordion-card {
+  padding: 0;
+  overflow: hidden;
+}
+.academy-accordion-header {
+  width: 100%;
+  min-height: 60px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+.academy-accordion-header:hover {
+  background: var(--bg-surface-hover);
+}
+.academy-accordion-body {
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.academy-empty-slot {
+  padding: 8px 4px;
+}
+
+/* ==========================================================================
+   Base 3 — Admin & Staff Control (Navy Header, Hero Banner, 8-Card Grid, 20x5 RBAC Matrix)
+   ========================================================================== */
+.admin-navy-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #0D1B2A 0%, #162A42 100%);
+  border: 1.5px solid rgba(234, 191, 22, 0.72);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-sm);
+}
+.admin-navy-header .icon-btn {
+  color: #FFFFFF;
+}
+.admin-navy-header .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+.admin-notif-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: #8D2029;
+  border: 1.5px solid #EABF16;
+  color: #FFFFFF;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-hero-banner {
+  position: relative;
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  background: linear-gradient(135deg, #0D1B2A 0%, #1B263B 45%, #8D2029 100%);
+  border: 1.5px solid rgba(234, 191, 22, 0.78);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-md);
+}
+.admin-hero-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-dashboard-grid-8 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 1024px) {
+  .admin-dashboard-grid-8 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.admin-hub-card {
+  position: relative;
+  min-height: 132px;
+  padding: 15px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.admin-hub-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-gold);
+  box-shadow: var(--shadow-md);
+}
+.admin-hub-card.locked {
+  opacity: 0.66;
+  border-style: dashed;
+}
+
+.rbac-matrix-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+.rbac-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.rbac-matrix-table th,
+.rbac-matrix-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.rbac-matrix-table thead th {
+  background: var(--bg-surface-variant);
+  font-weight: 800;
+  color: var(--text-primary);
+  text-align: left;
+}
+.rbac-matrix-table input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #8D2029;
+  cursor: pointer;
+}

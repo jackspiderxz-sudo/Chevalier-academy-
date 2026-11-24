@@ -45,6 +45,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -52,7 +53,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -74,6 +74,7 @@ fun handleFirestoreError(
     operationType: OperationType,
     path: String?
 ): String {
+    if (exception is CancellationException) return ""
     val auth = runCatching { FirebaseAuth.getInstance() }.getOrNull()
     val currentUser = auth?.currentUser
 
@@ -282,6 +283,7 @@ class CloudSyncManager(
             db.document(path).set(gatePayload, SetOptions.merge()).await()
             pinSessionGateReady.set(true)
         }.onFailure { err ->
+            if (err is CancellationException) throw err
             handleFirestoreError(err, OperationType.WRITE, path)
         }
     }
@@ -1196,8 +1198,8 @@ class CloudSyncManager(
     private fun observeOutboundChanges(db: FirebaseFirestore) {
         // 1. School Profile
         scope.launch {
-            database.schoolProfileDao().observeProfile().collectLatest { profile ->
-                if (profile == null || isApplyingRemote.get()) return@collectLatest
+            database.schoolProfileDao().observeProfile().collect { profile ->
+                if (profile == null || isApplyingRemote.get()) return@collect
                 val remoteId = profile.remoteId.ifBlank {
                     SyncMetadataDefaults.deterministicRemoteId("school_profile", 1L)
                 }
@@ -1233,8 +1235,8 @@ class CloudSyncManager(
 
         // 2. Campus Hero Photos
         scope.launch {
-            database.campusHeroPhotoDao().observeAllForManagement().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.campusHeroPhotoDao().observeAllForManagement().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "campus_hero_photos",
@@ -1262,8 +1264,8 @@ class CloudSyncManager(
 
         // 3. Academic Info
         scope.launch {
-            database.academicInfoDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.academicInfoDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "academic_info",
@@ -1291,8 +1293,8 @@ class CloudSyncManager(
 
         // 4. Higher Secondary Courses
         scope.launch {
-            database.higherSecondaryCourseDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.higherSecondaryCourseDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "higher_secondary_courses",
@@ -1322,8 +1324,8 @@ class CloudSyncManager(
 
         // 5. Facilities
         scope.launch {
-            database.facilityDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.facilityDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "facilities",
@@ -1352,8 +1354,8 @@ class CloudSyncManager(
 
         // 6. Transport Routes
         scope.launch {
-            database.transportDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.transportDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "transport_routes",
@@ -1383,8 +1385,8 @@ class CloudSyncManager(
 
         // 7. News Items
         scope.launch {
-            database.newsDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.newsDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "news_items",
@@ -1415,8 +1417,8 @@ class CloudSyncManager(
 
         // 8. Announcements
         scope.launch {
-            database.announcementDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.announcementDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "announcements",
@@ -1446,8 +1448,8 @@ class CloudSyncManager(
 
         // 9. Gallery Albums
         scope.launch {
-            database.galleryDao().observeAlbumsWithMedia().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.galleryDao().observeAlbumsWithMedia().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 val albums = list.map { it.album }
                 syncCollectionList(
                     db = db,
@@ -1478,8 +1480,8 @@ class CloudSyncManager(
 
         // 10. Gallery Media
         scope.launch {
-            database.galleryDao().observeAllMedia().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.galleryDao().observeAllMedia().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 val albumsById = database.galleryDao().observeAlbumsWithMedia().first()
                     .associate { it.album.id to it.album.remoteId }
                 syncCollectionList(
@@ -1514,8 +1516,8 @@ class CloudSyncManager(
 
         // 11. Social Media Links
         scope.launch {
-            database.socialMediaDao().observeAll().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.socialMediaDao().observeAll().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "social_media_links",
@@ -1543,8 +1545,8 @@ class CloudSyncManager(
 
         // 12. School Posts
         scope.launch {
-            database.schoolPostDao().observeAllPosts().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.schoolPostDao().observeAllPosts().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "school_posts",
@@ -1580,8 +1582,8 @@ class CloudSyncManager(
 
         // 13. School Highlights
         scope.launch {
-            database.schoolHighlightDao().observeAllHighlights().collectLatest { list ->
-                if (isApplyingRemote.get()) return@collectLatest
+            database.schoolHighlightDao().observeAllHighlights().collect { list ->
+                if (isApplyingRemote.get()) return@collect
                 syncCollectionList(
                     db = db,
                     collection = "school_highlights",
@@ -1650,6 +1652,7 @@ class CloudSyncManager(
             syncDigests[digestKey] = digest
             markSyncCompleted()
         }.onFailure { err ->
+            if (err is CancellationException) throw err
             handleFirestoreError(err, OperationType.WRITE, path)
             _status.value = _status.value.copy(lastError = err.message)
         }
@@ -1667,6 +1670,7 @@ class CloudSyncManager(
             syncDigests.remove("$collection:$remoteId")
             markSyncCompleted()
         }.onFailure { err ->
+            if (err is CancellationException) throw err
             handleFirestoreError(err, OperationType.DELETE, path)
         }
     }
